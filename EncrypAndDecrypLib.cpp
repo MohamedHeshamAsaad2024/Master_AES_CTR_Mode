@@ -4,6 +4,7 @@
 #include <vector>
 #include <bitset>
 
+
 using namespace std;
 
 // S-Box for SubBytes step
@@ -46,6 +47,142 @@ const uint8_t inv_sbox[256] ={
 };
 // Round constants (for AES key expansion)
 const uint8_t rcon[10] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1B, 0x36 };
+
+/********************************************************************
+ * Function: GaloisFieldMultiplication
+ * Description:
+ *  This function performs Galois Field Multiplication in GF(2^8).
+ *  In AES we perform operations in GF(2^8) ensuring that each number
+ *  can be represented by a single byte. The irreducable polynomial
+ *  defined by AES NIST is m(x) = x^8 + x^4 + x^3 + x + 1 which
+ *  corresponds to {01}{1b} in hex format or 283 in decimal format.
+ *  GF(2^8) Multiplication steps:
+ *      1. Distribute the first operand over the second operand
+ *      2. Reduce the result to modulo m(x)
+ * Inputs:  firstOperand    - First operand to GF multiplication
+ *          secondOperand   - Second operand to GF multiplication
+ * Outputs: void
+ * Returns: Result of multipling firstOperand by the secondOperand
+ *          in GF(2^8)
+ ********************************************************************/
+uint8_t GaloisFieldMultiplication(uint8_t firstOperand, uint8_t secondOperand) 
+{
+    /* Initialize a varibale to hold the result incrementally */
+    uint8_t result = 0;
+
+    /* Initialize a variable to hold the MSB during computations */
+    uint8_t high_bit = 0;
+
+    /* Distibute the first operand on the second operand through looping over all its terms */
+    while(secondOperand) 
+    {
+        /* If the LSB of the second operand is 1, then when distributed over the first operand a constant term will exist */
+        if ((secondOperand & 1) == 1)
+        {
+            /* This will require mod-2 adding (XOR) the first operand to the previous result */
+            result ^= firstOperand;
+        }
+        
+        /* Maintain the MSB which will be checked to indicate whether the result exceeded GF(2^8) or not */
+        high_bit = firstOperand & 0x80;
+
+        /* Multiply the first Operand by x to consider the next term in the next iteration. Multiplication by x in GF is essentially a simple shift left by 1 */
+        firstOperand <<= 1;
+
+        /* Check if the result of multiplication by x exceeded the GF(2^8) which is indicated by the MSB being 1 before multiplication */
+        if(high_bit == 1)
+        {
+            /* We need to reduce the result by the AES irreducable polynomial (x^8 + x^4 + x^3 + x + 1)
+               This is performed by (firstOperand) mod (0x1b) which can be performed by a single division step
+               as the highest term is x^8 in the firstOperand. This division step is essentially a mod-2 subtraction
+               which is a simple XOR operation */
+            firstOperand ^= 0x1b;
+        }
+        
+        /* Move to the next term (bit) to be processed in the second operand */
+        secondOperand >>= 1;
+    }
+
+    /* Return the final result of multiplication */
+    return result;
+}
+
+void MixColumns(uint8_t state[4][4]) 
+{
+    /* Define a 4x4 temporary matrix for intermediate computations in order not to corrupt the input matrix */
+    uint8_t temp[4][4];
+
+    /* Initialize the fixed polynomial matrix defined by AES NIST for Mix Columns step */
+    uint8_t fixedMatrix[4][4] = {
+        {0x02, 0x03, 0x01, 0x01},
+        {0x01, 0x02, 0x03, 0x01},
+        {0x01, 0x01, 0x02, 0x03},
+        {0x03, 0x01, 0x01, 0x02}
+    };
+
+    /* Apply GF Multiplication of the Fixed Polynomial Matrix (4x4) by the input State Matrix (4x4) */
+    for (int col = 0; col < 4; ++col) {
+        for (int row = 0; row < 4; ++row) {
+            temp[row][col] = 0;
+            for (int k = 0; k < 4; ++k) {
+                temp[row][col] ^= GaloisFieldMultiplication(fixedMatrix[row][k], state[k][col]);
+            }
+        }
+    }
+
+    /* Copy the result back from the temporary matrix to the output state matrix */
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            state[row][col] = temp[row][col];
+        }
+    }
+}
+
+/********************************************************************
+ ********************** Decryption Functions ************************
+ ********************************************************************/
+/********************************************************************
+ * Function: InvMixColumns
+ * Description:
+ *  This function performs AES Inverse Mix Columns steps by multipying
+ *  the inverse of the fixed polynomial matrix defined by AES NIST 
+ *  by the input state. Essentially, it performs 4x4 matrix 
+ *  multiplication in GF(2^8)
+ * Inputs:  state   - Refernece to Input State Matrix (4x4)
+ * Outputs: state   - Refernece to Output State Matrix (4x4)
+ * Returns: void
+ ********************************************************************/
+void InvMixColumns(uint8_t state[4][4]) 
+{
+    /* Define a 4x4 temporary matrix for intermediate computations in order not to corrupt the input matrix */
+    uint8_t temp[4][4];
+
+    /* Initialize the fixed polynomial matrix defined by AES NIST for Mix Columns step */
+    uint8_t fixedMatrix[4][4] = {
+        {0x0E, 0x0B, 0x0D, 0x09},
+        {0x09, 0x0E, 0x0B, 0x0D},
+        {0x0D, 0x09, 0x0E, 0x0B},
+        {0x0B, 0x0D, 0x09, 0x0E}
+    };
+
+    /* Apply GF Multiplication of the Fixed Polynomial Matrix (4x4) by the input State Matrix (4x4) */
+    for (int col = 0; col < 4; ++col) {
+        for (int row = 0; row < 4; ++row) {
+            temp[row][col] = 0;
+            for (int k = 0; k < 4; ++k) {
+                temp[row][col] ^= GaloisFieldMultiplication(fixedMatrix[row][k], state[k][col]);
+            }
+        }
+    }
+
+    /* Copy the result back from the temporary matrix to the output state matrix */
+    for (int row = 0; row < 4; ++row) {
+        for (int col = 0; col < 4; ++col) {
+            state[row][col] = temp[row][col];
+        }
+    }
+}
+
 
 // AddRoundKey: XORs the state with the round key used for both encryption and decryption
 void AddRoundKey(uint8_t state[4][4], uint8_t roundKey[4][4]) {
@@ -126,37 +263,18 @@ void InvShiftRows(uint8_t state[4][4]) {
     state[3][0] = temp;
 }
 
-// MixColumns: Mixes the columns using a fixed matrix multiplication
-void MixColumns(uint8_t state[4][4]) {
-    uint8_t temp[4][4];
-    for (int c = 0; c < 4; ++c) {
-        temp[0][c] = (state[0][c] * 2) ^ (state[1][c] * 3) ^ state[2][c] ^ state[3][c];
-        temp[1][c] = state[0][c] ^ (state[1][c] * 2) ^ (state[2][c] * 3) ^ state[3][c];
-        temp[2][c] = state[0][c] ^ state[1][c] ^ (state[2][c] * 2) ^ (state[3][c] * 3);
-        temp[3][c] = (state[0][c] * 3) ^ state[1][c] ^ state[2][c] ^ (state[3][c] * 2);
-    }
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            state[i][j] = temp[i][j];
-        }
-    }
-}
+/********************************************************************
+ * Function: MixColumns
+ * Description:
+ *  This function performs AES Mix Columns steps by multipying
+ *  the fixed polynomial matrix defined by AES NIST by the input
+ *  state. Essentially, it performs 4x4 matrix multiplication in
+ *  GF(2^8)
+ * Inputs:  state   - Refernece to Input State Matrix (4x4)
+ * Outputs: state   - Refernece to Output State Matrix (4x4)
+ * Returns: void
+ ********************************************************************/
 
-// Inverse MixColumns: Performs the inverse mix columns for decryption
-void InvMixColumns(uint8_t state[4][4]) {
-    uint8_t temp[4][4];
-    for (int c = 0; c < 4; ++c) {
-        temp[0][c] = (state[0][c] * 14) ^ (state[1][c] * 11) ^ (state[2][c] * 13) ^ (state[3][c] * 9);
-        temp[1][c] = (state[0][c] * 9) ^ (state[1][c] * 14) ^ (state[2][c] * 11) ^ (state[3][c] * 13);
-        temp[2][c] = (state[0][c] * 13) ^ (state[1][c] * 9) ^ (state[2][c] * 14) ^ (state[3][c] * 11);
-        temp[3][c] = (state[0][c] * 11) ^ (state[1][c] * 13) ^ (state[2][c] * 9) ^ (state[3][c] * 14);
-    }
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            state[i][j] = temp[i][j];
-        }
-    }
-}
 // KeyExpansion to generate round keys
 void KeyExpansion(uint8_t key[16], uint8_t roundKeys[11][4][4]) {
     uint8_t temp[4]; // Temporary storage for the column being processed
@@ -255,18 +373,20 @@ void AESDecrypt(uint8_t ciphertext[16], uint8_t plaintext[16], uint8_t roundKeys
 
     // Initial round key addition
     AddRoundKey(state, roundKeys[10]);
-    InvShiftRows(state);
-    InvSubBytes(state);
+
 
 
     // Main rounds
-    for (int round = 1; round <= 9; ++round) {
-        AddRoundKey(state, roundKeys[round]);
-        InvMixColumns(state);
+    for (int round = 9; round >= 1; --round) {
         InvShiftRows(state);
         InvSubBytes(state);
+        AddRoundKey(state, roundKeys[round]);
+        InvMixColumns(state);
     }
 
+    
+    InvShiftRows(state);
+    InvSubBytes(state);
     // Final round (no InvMixColumns)
     AddRoundKey(state, roundKeys[0]);
 
@@ -282,6 +402,7 @@ void AESDecrypt(uint8_t ciphertext[16], uint8_t plaintext[16], uint8_t roundKeys
 
 // Main function to test AES encryption and decryption
 int main() {
+
     uint8_t key[16] = {
         0x2b, 0x7e, 0x15, 0x16,
         0x28, 0xae, 0xd2, 0xa6,
@@ -298,9 +419,8 @@ int main() {
     
     uint8_t ciphertext[16];
     uint8_t decryptedText[16];
-    
     uint8_t roundKeys[11][4][4];
-    
+
     // Perform key expansion
     KeyExpansion(key, roundKeys);
     
