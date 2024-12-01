@@ -276,7 +276,8 @@ void InvShiftRows(uint8_t state[4][4]) {
  ********************************************************************/
 
 // KeyExpansion to generate round keys
-void KeyExpansion(uint8_t key[16], uint8_t roundKeys[11][4][4]) {
+void KeyExpansion(uint8_t key[16], uint8_t roundKeys[11][4][4]) 
+{
     uint8_t temp[4]; // Temporary storage for the column being processed
     int i = 0;
 
@@ -420,10 +421,23 @@ int main() {
     uint8_t ciphertext[16];
     uint8_t decryptedText[16];
     uint8_t roundKeys[11][4][4];
-
+    // Expanded key schedule (NUM_COLUMN * (Nr + 1) words)
+    uint32_t expandedKey[NUM_COLUMN * (Nr + 1)];
     // Perform key expansion
-    KeyExpansion(key, roundKeys);
-    
+    KeyExpansion(key, 4, 10, expandedKey);
+    cout << "Round keys";
+    for(int i=0;i<11;i++)
+    {
+        for (int col = 0; col < 4; ++col)
+        {
+            for (int row = 0; row < 4; ++row) 
+            {
+                 cout << hex << setw(2) << setfill('0') << (int)plaintext[i][col][row] << " ";
+            }
+            cout << "\n";
+        }
+        cout << "\n";
+    }
     // Encrypt the plaintext
     AESEncrypt(plaintext, ciphertext, roundKeys);
     
