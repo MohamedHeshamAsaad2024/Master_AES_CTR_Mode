@@ -1,0 +1,64 @@
+
+Step 1: Generate the RSA Key Pair
+Generate a private key:
+
+openssl genrsa -out private-key.pem 2048
+
+Extract the public key:
+
+
+openssl rsa -in private-key.pem -pubout -out public-key.pem
+
+
+Step 2: Extract Key Components
+
+For Public Key (Modulus and Exponent)
+
+openssl rsa -pubin -in public-key.pem -text -noout > public-key-details.txt
+
+
+Example output:
+
+
+Modulus:
+    00:ea:20:5a:da:96:6e:b2:c3:61:7c:0c:41:19:1a:23:
+    ...
+Exponent: 65537 (0x10001)
+
+
+For Private Key (Modulus, Public Exponent, Private Exponent, and Others)
+
+openssl rsa -in private-key.pem -text -noout> private-public-key-details.txt
+
+Example output:
+
+Private-Key: (2048 bit)
+modulus:
+    00:ea:20:5a:da:96:6e:b2:c3:61:7c:0c:41:19:1a:23:
+    ...
+publicExponent: 65537 (0x10001)
+privateExponent:
+    5a:bf:8e:61:9d:5e:73:12:33:7f:5e:3a:da:41:ab:34:
+    ...
+
+
+
+
+
+
+
+Encrypt text 
+
+openssl rsautl -encrypt -inkey public-key.pem -pubin -in plaintext.txt -out ciphertext.bin
+
+xxd -p ciphertext.bin > ciphertext.hex
+
+
+
+Decrypt text
+
+
+openssl rsautl -decrypt -inkey private-key.pem -in ciphertext.bin -out decrypted.txt
+
+
+
