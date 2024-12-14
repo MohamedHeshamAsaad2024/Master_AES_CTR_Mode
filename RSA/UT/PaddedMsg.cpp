@@ -13,56 +13,43 @@ using namespace std;
  * @param OrdinaryMessage: The original plaintext message as an mpz_class.
  */
 void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_class OrdinaryMessage) {
-    // Convert OrdinaryMessage to a byte array
-    string messageStr = OrdinaryMessage.get_str(16); // Get the message as a hexadecimal string
-    vector<uint8_t> messageBytes(messageStr.size() / 2);
-    for (size_t i = 0; i < messageBytes.size(); ++i) {
-        messageBytes[i] = stoi(messageStr.substr(2 * i, 2), nullptr, 16);
-    }
+    // Define key size in bytes (e.g., 256 bytes for 2048-bit RSA)
+    size_t keySize = 256;
 
-    // Determine key size (e.g., 128 bytes for 1024-bit RSA)
-    size_t keySize = 128;
+    // Convert the plaintext to a byte array
+    vector<uint8_t> plaintext = mpzToByteArray(OrdinaryMessage, OrdinaryMessage.get_str(16).size() / 2);
 
     // Ensure the plaintext fits within the padded structure
-    if (messageBytes.size() > keySize - 11) {
+    if (plaintext.size() > keySize - 11) {
         throw invalid_argument("Plaintext is too long for the given key size.");
     }
 
-    // Initialize the padded message as a byte array
+    // Initialize the padded message
     vector<uint8_t> paddedMessage(keySize, 0x00);
 
-    // Step 1: Add the padding format bytes
-    paddedMessage[0] = 0x00; // First byte must be 0x00
-    paddedMessage[1] = 0x02; // Second byte must be 0x02 for encryption padding
+    // Add padding format bytes
+    paddedMessage[0] = 0x00;
+    paddedMessage[1] = 0x02;
 
-    // Step 2: Fill with random non-zero bytes
-    size_t paddingLength = keySize - messageBytes.size() - 3; // Length of the padding
-    srand(static_cast<unsigned>(time(0))); // Seed the random number generator
+    // Add random non-zero padding
+    size_t paddingLength = keySize - plaintext.size() - 3;
+    srand(static_cast<unsigned>(time(0)));
     for (size_t i = 0; i < paddingLength; ++i) {
         uint8_t randomByte;
         do {
-            randomByte = rand() % 256; // Generate a random byte
-        } while (randomByte == 0x00); // Ensure it's non-zero
+            randomByte = rand() % 256;
+        } while (randomByte == 0x00);
         paddedMessage[2 + i] = randomByte;
     }
 
-    // Step 3: Add the 0x00 separator byte
+    // Add the separator and plaintext
     paddedMessage[2 + paddingLength] = 0x00;
+    memcpy(&paddedMessage[3 + paddingLength], plaintext.data(), plaintext.size());
 
-    // Step 4: Copy the plaintext at the end
-    for (size_t i = 0; i < messageBytes.size(); ++i) {
-        paddedMessage[3 + paddingLength + i] = messageBytes[i];
-    }
-
-    // Convert the padded message back to an mpz_class
-    string paddedHex;
-    for (uint8_t byte : paddedMessage) {
-        char buf[3];
-        sprintf(buf, "%02X", byte);
-        paddedHex += buf;
-    }
-    PaddedMessage.set_str(paddedHex, 16); // Convert from hex string to mpz_class
+    // Convert padded message to mpz_class
+    PaddedMessage = byteArrayToMpz(paddedMessage);
 }
+
 
 /**
  * Function to remove PKCS#1 v1.5 padding from a padded message.
@@ -72,19 +59,18 @@ void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_c
  * @param PaddedMessage: The padded message as an mpz_class.
  */
 void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz_class PaddedMessage) {
-    // Convert PaddedMessage to a byte array
-    string paddedStr = PaddedMessage.get_str(16); // Get the padded message as a hexadecimal string
-    vector<uint8_t> paddedBytes(paddedStr.size() / 2);
-    for (size_t i = 0; i < paddedBytes.size(); ++i) {
-        paddedBytes[i] = stoi(paddedStr.substr(2 * i, 2), nullptr, 16);
-    }
+    // Define key size in bytes
+    size_t keySize = 256;
 
-    // Verify the padding format
+    // Convert padded message to a byte array
+    vector<uint8_t> paddedBytes = mpzToByteArray(PaddedMessage, keySize);
+
+    // Verify padding format
     if (paddedBytes[0] != 0x00 || paddedBytes[1] != 0x02) {
         throw invalid_argument("Invalid padding format.");
     }
 
-    // Find the 0x00 separator byte
+    // Find the separator
     size_t separatorIndex = 2;
     while (separatorIndex < paddedBytes.size() && paddedBytes[separatorIndex] != 0x00) {
         separatorIndex++;
@@ -94,17 +80,9 @@ void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz
         throw invalid_argument("Padding separator not found.");
     }
 
-    // Extract the plaintext message
-    vector<uint8_t> messageBytes(paddedBytes.begin() + separatorIndex + 1, paddedBytes.end());
-
-    // Convert the plaintext message back to an mpz_class
-    string messageHex;
-    for (uint8_t byte : messageBytes) {
-        char buf[3];
-        sprintf(buf, "%02X", byte);
-        messageHex += buf;
-    }
-    OrdinaryMessage.set_str(messageHex, 16); // Convert from hex string to mpz_class
+    // Extract the plaintext
+    vector<uint8_t> plaintext(paddedBytes.begin() + separatorIndex + 1, paddedBytes.end());
+    OrdinaryMessage = byteArrayToMpz(plaintext);
 }
 
 int main() {
