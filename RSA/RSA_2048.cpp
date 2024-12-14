@@ -93,7 +93,18 @@ int main()
 /*************************************************************
  *                       F U N C T I O N S                   *
  *************************************************************/
-// Encrypts a message using RSA with PKCS #1 padding (Stub function for demonstration purposes)
+/*************************************************************
+ * Function Name: RSA_PKCS_1_encrypt
+ * Descriotion:
+ *  This function acts as a wrapper for the modular exponentiation
+ *  to be used for encryption
+ * Arguments:
+ *  message (mpz_class): The message to be encrypted
+ *  publicExponent (mpz_class): The public exponent
+ *  modulus (mpz_class): The modulus
+ * Return:
+ *  cipherText (mpz_class): The encrypted message
+ ************************************************************/
 mpz_class RSA_PKCS_1_encrypt(const mpz_class message, const mpz_class publicExponent, const mpz_class modulus) 
 {
     mpz_class cipherText = modularExponentiation(message, publicExponent, modulus);
@@ -101,14 +112,48 @@ mpz_class RSA_PKCS_1_encrypt(const mpz_class message, const mpz_class publicExpo
     return cipherText;
 }
 
-// Decrypts a message using RSA with PKCS #1 padding (Stub function for demonstration purposes)
+/*************************************************************
+ * Function Name: RSA_PKCS_1_decrypt
+ * Descriotion:
+ *  This function acts as a wrapper for the modular exponentiation
+ *  to be used for decryption
+ * Arguments:
+ *  cipher (mpz_class): The message to be decrypted
+ *  privateExponent (mpz_class): The private exponent
+ *  modulus (mpz_class): The modulus
+ * Return:
+ *  decryptedText (mpz_class): The decrypted message
+ ************************************************************/
 mpz_class RSA_PKCS_1_decrypt(const mpz_class cipher, const mpz_class privateExponent, const mpz_class modulus) 
 {
-    mpz_class plainText = modularExponentiation(cipher, privateExponent, modulus);
+    mpz_class decryptedText = modularExponentiation(cipher, privateExponent, modulus);
     
-    return plainText;
+    return decryptedText;
 }
 
+/*************************************************************
+ * Function Name: modularExponentiation
+ * Descriotion:
+ *  This function performs modular exponentiation using the
+ *  Indian algorithm. Given (base ^ exponent) mode (modulus),
+ *  the algorithm works as follows:
+ *      1- Initialization Step: Start with Result = 1
+ *      2- Start from the LSB of the exponent
+ *      3- While the exponent is not zero
+ *          3.1- If the current bit is 1, update result by
+ *               multiplying the result by base
+ *          3.2- Reduce the result to the modulus value
+ *          3.3- Update the base by multiplying it by itself
+ *          3.4- Shift the exponent left (Halving it)
+ *      4- The final result is the data of Result
+ * Arguments:
+ *  base (mpz_class): TThe base of the exponentiation
+ *  exponent (mpz_class): The exponent value
+ *  modulus (mpz_class): The modulus for reduction
+ * Return:
+ *  result (mpz_class): The final result of the modular
+ *                       exponentiation
+ ************************************************************/
 mpz_class modularExponentiation(mpz_class base, mpz_class exponent, mpz_class modulus)
 {
     /* Initialization Step: Start with result of 1 */
