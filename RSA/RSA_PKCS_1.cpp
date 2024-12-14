@@ -13,11 +13,13 @@
 #include <vector>
 #include <random>
 #include <gmp.h>
+#include <gmpxx.h>
 #include <sstream>
 #include <cassert>
 #include <tuple>
 
 using namespace std;
+
 
 // Converts an ordinary message to a padded message (Stub function for demonstration purposes)
 // Gamel's responsibility
@@ -31,18 +33,105 @@ void ConvertPaddedMessageToOrdinaryMessage(mpz_t OrdinaryMessage, const mpz_t Pa
     mpz_set(OrdinaryMessage, PaddedMessage); // Placeholder logic, this should remove padding
 }
 
+// Function to generate a random 256-byte number
+void generateRandomNumber(mpz_t randomNumber) 
+{
+    // Initialize GMP random state
+    gmp_randstate_t state;
+    gmp_randinit_default(state);
+
+    // Seed the random state with current time
+    std::random_device rd;
+    unsigned long seed = rd();
+    gmp_randseed_ui(state, seed);
+    mpz_urandomb(randomNumber, state, 256 * 8); // 256 bytes = 256 * 8 bits
+
+
+    gmp_randclear(state);
+}
+
+// Function to check if a number is prime
+bool isPrime(const mpz_t randomNumber) 
+{
+    int result = mpz_probab_prime_p(randomNumber, 25); // 25 rounds of Miller-Rabin tests
+    return result > 0; // Result > 0 indicates a probable prime
+}
+
+void generateTwoPrimeNumbers(mpz_t PrimeNumber_1,mpz_t PrimeNumber_2) 
+{
+    // Generate a random 256-byte number 
+    mpz_t randomNumber; 
+    mpz_init(randomNumber);    
+
+    generateRandomNumber(randomNumber);
+    if(isPrime(const mpz_t randomNumber)=="Yes") PrimeNumber_1=randomNumber;
+    
+
+    generateRandomNumber(randomNumber);
+    if(isPrime(const mpz_t randomNumber)=="Yes") PrimeNumber_2=randomNumber;
+
+    // Clear GMP variables 
+    mpz_clear(randomNumber);
+}
+
+
+// Function to compute GCD using the Euclidean algorithm
+void computeGCD(mpz_t result, const mpz_t num1, const mpz_t num2) {
+    mpz_t a, b, temp;
+    mpz_inits(a, b, temp, nullptr);
+
+    // Initialize a and b with num1 and num2
+    mpz_set(a, num1);
+    mpz_set(b, num2);
+
+    // Apply Euclidean algorithm
+    while (mpz_cmp_ui(b, 0) != 0) {
+        mpz_mod(temp, a, b); // temp = a % b
+        mpz_set(a, b);       // a = b
+        mpz_set(b, temp);    // b = temp
+    }
+
+    // Set result to a (the GCD)
+    mpz_set(result, a);
+
+    // Clear mpz_t variables
+    mpz_clears(a, b, temp, nullptr);
+}
+
+
+// Function to calculate Euler's Totient function for n = p * q
+void computePhi(mpz_t result, const mpz_t PrimeNumber_1, const mpz_t PrimeNumber_2) 
+{
+    mpz_t PrimeNumber_1_minus_1, PrimeNumber_2_minus_1;
+    mpz_inits(p_minus_1, q_minus_1, nullptr);
+
+    // Compute PrimeNumber_1 - 1 and PrimeNumber_2 - 1
+    mpz_sub_ui(p_minus_1, PrimeNumber_1, 1);
+    mpz_sub_ui(q_minus_1, PrimeNumber_2, 1);
+
+    // Compute phi(n) = (PrimeNumber_1 - 1) * (PrimeNumber_2 - 1)
+    mpz_mul(result, PrimeNumber_1_minus_1, PrimeNumber_2_minus_1);
+
+    // Clear temporary variables
+    mpz_clears(PrimeNumber_1_minus_1, PrimeNumber_2_minus_1, nullptr);
+}
+
+
+
 // Generates RSA keys: public and private (Stub function for demonstration purposes)
 // Kamaly's responsibility
-tuple<mpz_t, mpz_t, mpz_t> generateKeys() {
-    mpz_t Public_Exponent, Private_Exponent, Public_Modulus;
-    mpz_inits(Public_Exponent, Private_Exponent, Public_Modulus, nullptr);
+tuple<mpz_t, mpz_t, mpz_t> generateKeys() 
+{
+    mpz_t Public_Exponent, Private_Exponent, Public_Modulus,Generted_PrimeNumber_1,Generted_PrimeNumber_2,phi;
+    mpz_inits(Public_Exponent, Private_Exponent, Public_Modulus,Generted_PrimeNumber_1,Generted_PrimeNumber_2, nullptr);
+   
+   //Generate two prime numbers
+   generateTwoPrimeNumbers(Generted_PrimeNumber_1,Generted_PrimeNumber_2);
+   
+   //Calculate Phi value 
+   computePhi(phi,Generted_PrimeNumber_1,Generted_PrimeNumber_2);
 
-    // Example values, these should be generated properly
-    mpz_set_ui(Public_Modulus, 2773);
-    mpz_set_ui(Public_Exponent, 17);
-    mpz_set_ui(Private_Exponent, 157);
-
-    return make_tuple(Public_Modulus, Public_Exponent, Private_Exponent);
+   return make_tuple(Public_Modulus, Public_Exponent, Private_Exponent);
 }
 
 // Encrypts a message using RSA with PKCS #1 padding (Stub function for demonstration purposes)
