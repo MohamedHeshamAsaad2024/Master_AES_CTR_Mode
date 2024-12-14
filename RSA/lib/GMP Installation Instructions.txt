@@ -1,0 +1,23 @@
+To install GMP do the following:
+	1- Download the source files of GMP from the following https://gmplib.org/
+	2- Download MSYS2 from the following https://www.msys2.org/
+	3- Open msys2 and change director to the gmp library downloaded (say C:\gmp)
+	4- Run the following commands [Note: make instructions takes long time]
+		pacman -Syyu
+		pacman --needed -S git mingw-w64-x86_64-gcc base-devel
+		pacman gcc
+		./configure --enable-cxx
+		make
+		make check
+		make install
+
+To use the GMP library
+	- Include the following #include <gmpxx.h>
+
+In order to compile using the GMP library:
+	1- Open C:\msys64\mingw64.exe
+	2- Change directory to the source file cd C:\EK\Masters\Master_Security_Repo\RSA
+	3- Run the following command to compile:
+		g++ -std=c++20 ModularExponentation.cpp -o bin/ModularExponentation.exe -lgmpxx -lgmp
+	4- Run the following line to execute:
+		bin/ModularExponentation.exe

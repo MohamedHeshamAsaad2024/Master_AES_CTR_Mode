@@ -1,7 +1,6 @@
 /**
  * PKCS VERSION 1.5 Padding scheme implementation
- * 
- * 
+ *  
  * Implemented by 
  * Eslam abdelsamea
  * Abdelrahman Gamil
@@ -12,7 +11,6 @@
 #include <iostream>
 #include <vector>
 #include <random>
-#include <gmp.h>
 #include <gmpxx.h>
 #include <sstream>
 #include <cassert>
@@ -154,13 +152,13 @@ tuple<mpz_t, mpz_t, mpz_t> generateKeys()
 // Encrypts a message using RSA with PKCS #1 padding (Stub function for demonstration purposes)
 // Eslam's responsibility
 void RSA_PKCS_1_encrypt(mpz_t EncryptedMessage, const mpz_t message, const mpz_t Public_Exponent, const mpz_t Public_Modulus) {
-    mpz_powm(EncryptedMessage, message, Public_Exponent, Public_Modulus); // Simplified encryption logic
+
 }
 
 // Decrypts a message using RSA with PKCS #1 padding (Stub function for demonstration purposes)
 // Eldehamy's responsibility
 void RSA_PKCS_1_decrypt(mpz_t DecryptedMessage, const mpz_t ciphertext, const mpz_t Private_Exponent, const mpz_t Public_Modulus) {
-    mpz_powm(DecryptedMessage, ciphertext, Private_Exponent, Public_Modulus); // Simplified decryption logic
+
 }
 
 int main() {
