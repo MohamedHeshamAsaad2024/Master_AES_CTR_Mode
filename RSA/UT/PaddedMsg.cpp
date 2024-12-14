@@ -131,17 +131,3 @@ mpz_class byteArrayToMpz(const vector<uint8_t> &byteArray) {
     }
     return mpz_class(hexStr, 16); // Convert from hex string to mpz_class
 }
-
-mpz_class enforceLength(const mpz_class &num, size_t byteLength) {
-    string hexStr = num.get_str(16);
-
-    // Calculate the required hex length
-    size_t hexLength = byteLength * 2;
-    if (hexStr.size() < hexLength) {
-        hexStr = string(hexLength - hexStr.size(), '0') + hexStr;
-    }
-
-    return mpz_class(hexStr, 16);
-}
-
-

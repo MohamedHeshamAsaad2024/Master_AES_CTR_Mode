@@ -1,7 +1,12 @@
 /*************************************************************
  * File Name: RSA_2048
  * Description:
- *  PKCS VERSION 1.5 Padding scheme implementation
+ *  Implementation of RSA 2048 with padding scheme PKCS v1.5
+ *  The implementation does the following:
+ *  - Generate keys and test for primality using GCD and Jacobi
+ *  - Obtains the multiplicative inverse using extended euclidean
+ *  - Perform PCKS v1.5 Padding
+ *  - Performs encryption and decryption using Indian Algorithm
  *  
  * Implemented by 
  *  Abdelrahman Gamil
@@ -47,6 +52,9 @@ mpz_class extendedEuclidean(mpz_class FirstInteger, mpz_class SecondInteger, mpz
  *************************************************************/
 int main() 
 {
+    /* Declare placeholder to take string input from user interactively */
+    std::string inputMessage;
+
     /* Declare placeholder for the input plain text message */
     mpz_class message;
 
@@ -77,9 +85,12 @@ int main()
     gmp_printf("\nPublic Key (Public_Modulus, Public_Exponent):\n(%Zx, %Zd)\n", Public_Modulus, Public_Exponent);
     gmp_printf("\nPrivate Key (Private_Exponent):\n(%Zx)\n", Private_Exponent);
 
+    std::cout << "\nEnter a large number:\n";
+    std::cin >> inputMessage; // Read input as a string
+
     // Set the message to be encrypted. 
     // The second argument is set to 10 in case of decimal value and set to 16 in case of hex value
-    message.set_str("31", 10);
+    message.set_str(inputMessage, 16);
 
     // Display the original message
     gmp_printf("\nOriginal message in hexadecimal:\n%Zx\n", message.get_mpz_t());
@@ -265,18 +276,113 @@ mpz_class modularInverse(mpz_class PublicExponent, mpz_class Phi)
     return (x % Phi + Phi) % Phi;
 }
 
-// Converts an ordinary message to a padded message (Stub function for demonstration purposes)
-// Gamel's responsibility
-void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_class OrdinaryMessage) 
-{
-    PaddedMessage = OrdinaryMessage;
+vector<uint8_t> mpzToByteArray(const mpz_class &num, size_t byteLength) {
+    // Convert the number to a hexadecimal string
+    string hexStr = num.get_str(16);
+
+    // Calculate the number of leading zeros required
+    size_t hexLength = byteLength * 2; // Each byte is 2 hex characters
+    if (hexStr.size() < hexLength) {
+        hexStr = string(hexLength - hexStr.size(), '0') + hexStr;
+    }
+
+    // Convert the hex string to a byte array
+    vector<uint8_t> byteArray(byteLength);
+    for (size_t i = 0; i < byteLength; ++i) {
+        byteArray[i] = stoi(hexStr.substr(2 * i, 2), nullptr, 16);
+    }
+
+    return byteArray;
 }
 
-// Converts a padded message back to an ordinary message (Stub function for demonstration purposes)
-// Gamel's responsibility
-void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz_class PaddedMessage) 
-{
-    OrdinaryMessage = PaddedMessage;
+mpz_class byteArrayToMpz(const vector<uint8_t> &byteArray) {
+    string hexStr;
+    for (uint8_t byte : byteArray) {
+        char buf[3];
+        sprintf(buf, "%02X", byte); // Ensure 2-character hex representation
+        hexStr += buf;
+    }
+    return mpz_class(hexStr, 16); // Convert from hex string to mpz_class
+}
+
+/**
+ * Function to pad an ordinary message in PKCS#1 v1.5 format.
+ * Converts the plaintext message into a padded message suitable for RSA encryption.
+ * 
+ * @param PaddedMessage: Reference to the resulting padded message as an mpz_class.
+ * @param OrdinaryMessage: The original plaintext message as an mpz_class.
+ */
+void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_class OrdinaryMessage) {
+    // Define key size in bytes (e.g., 256 bytes for 2048-bit RSA)
+    size_t keySize = 256;
+
+    // Convert the plaintext to a byte array
+    vector<uint8_t> plaintext = mpzToByteArray(OrdinaryMessage, OrdinaryMessage.get_str(16).size() / 2);
+
+    // Ensure the plaintext fits within the padded structure
+    if (plaintext.size() > keySize - 11) {
+        throw invalid_argument("Plaintext is too long for the given key size.");
+    }
+
+    // Initialize the padded message
+    vector<uint8_t> paddedMessage(keySize, 0x00);
+
+    // Add padding format bytes
+    paddedMessage[0] = 0x00;
+    paddedMessage[1] = 0x02;
+
+    // Add random non-zero padding
+    size_t paddingLength = keySize - plaintext.size() - 3;
+    srand(static_cast<unsigned>(time(0)));
+    for (size_t i = 0; i < paddingLength; ++i) {
+        uint8_t randomByte;
+        do {
+            randomByte = rand() % 256;
+        } while (randomByte == 0x00);
+        paddedMessage[2 + i] = randomByte;
+    }
+
+    // Add the separator and plaintext
+    paddedMessage[2 + paddingLength] = 0x00;
+    memcpy(&paddedMessage[3 + paddingLength], plaintext.data(), plaintext.size());
+
+    // Convert padded message to mpz_class
+    PaddedMessage = byteArrayToMpz(paddedMessage);
+}
+
+
+/**
+ * Function to remove PKCS#1 v1.5 padding from a padded message.
+ * Converts a padded message back into the original plaintext message.
+ * 
+ * @param OrdinaryMessage: Reference to the resulting plaintext message as an mpz_class.
+ * @param PaddedMessage: The padded message as an mpz_class.
+ */
+void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz_class PaddedMessage) {
+    // Define key size in bytes
+    size_t keySize = 256;
+
+    // Convert padded message to a byte array
+    vector<uint8_t> paddedBytes = mpzToByteArray(PaddedMessage, keySize);
+
+    // Verify padding format
+    if (paddedBytes[0] != 0x00 || paddedBytes[1] != 0x02) {
+        throw invalid_argument("Invalid padding format.");
+    }
+
+    // Find the separator
+    size_t separatorIndex = 2;
+    while (separatorIndex < paddedBytes.size() && paddedBytes[separatorIndex] != 0x00) {
+        separatorIndex++;
+    }
+
+    if (separatorIndex >= paddedBytes.size()) {
+        throw invalid_argument("Padding separator not found.");
+    }
+
+    // Extract the plaintext
+    vector<uint8_t> plaintext(paddedBytes.begin() + separatorIndex + 1, paddedBytes.end());
+    OrdinaryMessage = byteArrayToMpz(plaintext);
 }
 
 /*************************************************************
