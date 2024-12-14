@@ -64,7 +64,21 @@
 			"span": "cpp",
 			"stop_token": "cpp",
 			"text_encoding": "cpp",
-			"variant": "cpp"
+			"variant": "cpp",
+			"cassert": "cpp",
+			"cstring": "cpp",
+			"ios": "cpp",
+			"xfacet": "cpp",
+			"xiosbase": "cpp",
+			"xlocale": "cpp",
+			"xlocinfo": "cpp",
+			"xlocnum": "cpp",
+			"xmemory": "cpp",
+			"xmemory0": "cpp",
+			"xstddef": "cpp",
+			"xstring": "cpp",
+			"xtr1common": "cpp",
+			"xutility": "cpp"
 		}
 	}
 }
