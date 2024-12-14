@@ -75,8 +75,9 @@ int main()
     gmp_printf("Public Key (Public_Modulus, Public_Exponent): (%Zd, %Zd)\n", Public_Modulus, Public_Exponent);
     gmp_printf("Private Key (Private_Exponent): (%Zd)\n", Private_Exponent);
 
-    // Set the message to be encrypted
-    message.set_str("31", 10); 
+    // Set the message to be encrypted. 
+    // The second argument is set to 10 in case of decimal value and set to 16 in case of hex value
+    message.set_str("31", 10);
 
     // Display the original message
     gmp_printf("Original message: %Zd\n", message);
