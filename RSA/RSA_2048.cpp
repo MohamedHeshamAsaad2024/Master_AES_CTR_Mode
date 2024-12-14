@@ -32,8 +32,8 @@ void generateKeys(mpz_class &Public_Modulus, mpz_class &Public_Exponent, mpz_cla
 void computePhi(mpz_class result, const mpz_class PrimeNumber_1, const mpz_class PrimeNumber_2);
 void computeGCD(mpz_class result, const mpz_class num1, const mpz_class num2);
 void generateTwoPrimeNumbers(mpz_class PrimeNumber_1,mpz_class PrimeNumber_2);
-void ConvertOrdinaryMessageToPaddedMessage(mpz_class PaddedMessage, const mpz_class OrdinaryMessage);
-void ConvertPaddedMessageToOrdinaryMessage(mpz_class OrdinaryMessage, const mpz_class PaddedMessage);
+void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_class OrdinaryMessage);
+void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz_class PaddedMessage);
 void generateRandomNumber(mpz_class randomNumber);
 bool isPrime(const mpz_class randomNumber);
 mpz_class RSA_PKCS_1_encrypt(const mpz_class &message, const mpz_class &publicExponent, const mpz_class &modulus);
@@ -82,20 +82,20 @@ int main()
     gmp_printf("Original message: %Zd\n", message);
 
     // Convert the ordinary message to a padded message
-    // ConvertOrdinaryMessageToPaddedMessage(Padded_message, message);
-    // gmp_printf("Padded message: %Zd\n", Padded_message);
+    ConvertOrdinaryMessageToPaddedMessage(Padded_message, message);
+    gmp_printf("Padded message: %Zd\n", Padded_message);
 
     // Encrypt the padded message using the public key
-    ciphertext = RSA_PKCS_1_encrypt(message, Public_Exponent, Public_Modulus);
+    ciphertext = RSA_PKCS_1_encrypt(Padded_message, Public_Exponent, Public_Modulus);
     gmp_printf("Encrypted message: %Zd\n", ciphertext);
 
     // Decrypt the encrypted message using the private key
-    decryptedMessage = RSA_PKCS_1_decrypt(ciphertext, Private_Exponent, Public_Modulus);
-    gmp_printf("Decrypted padded message: %Zd\n", decryptedMessage);
+    decryptedPaddedMessage = RSA_PKCS_1_decrypt(ciphertext, Private_Exponent, Public_Modulus);
+    gmp_printf("Decrypted padded message: %Zd\n", decryptedPaddedMessage);
 
     // Convert the decrypted padded message back to the original message
-    // ConvertPaddedMessageToOrdinaryMessage(decryptedMessage, decryptedPaddedMessage);
-    // gmp_printf("Decrypted message: %Zd\n", decryptedMessage);
+    ConvertPaddedMessageToOrdinaryMessage(decryptedMessage, decryptedPaddedMessage);
+    gmp_printf("Decrypted message: %Zd\n", decryptedMessage);
 
     return 0;
 }
@@ -190,19 +190,7 @@ void generateTwoPrimeNumbers(mpz_t PrimeNumber_1,mpz_t PrimeNumber_2)
 
     // Clear GMP variables 
     mpz_clear(randomNumber);
-} */
-
-/* // Converts an ordinary message to a padded message (Stub function for demonstration purposes)
-// Gamel's responsibility
-void ConvertOrdinaryMessageToPaddedMessage(mpz_t PaddedMessage, const mpz_t OrdinaryMessage) {
-    mpz_set(PaddedMessage, OrdinaryMessage); // Placeholder logic, this should implement proper padding
-}
-
-// Converts a padded message back to an ordinary message (Stub function for demonstration purposes)
-// Gamel's responsibility
-void ConvertPaddedMessageToOrdinaryMessage(mpz_t OrdinaryMessage, const mpz_t PaddedMessage) {
-    mpz_set(OrdinaryMessage, PaddedMessage); // Placeholder logic, this should remove padding
-}
+} 
 
 // Function to generate a random 256-byte number
 void generateRandomNumber(mpz_t randomNumber) 
@@ -227,6 +215,20 @@ bool isPrime(const mpz_t randomNumber)
     int result = mpz_probab_prime_p(randomNumber, 25); // 25 rounds of Miller-Rabin tests
     return result > 0; // Result > 0 indicates a probable prime
 } */
+
+// Converts an ordinary message to a padded message (Stub function for demonstration purposes)
+// Gamel's responsibility
+void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_class OrdinaryMessage) 
+{
+    PaddedMessage = OrdinaryMessage;
+}
+
+// Converts a padded message back to an ordinary message (Stub function for demonstration purposes)
+// Gamel's responsibility
+void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz_class PaddedMessage) 
+{
+    OrdinaryMessage = PaddedMessage;
+}
 
 /*************************************************************
  * Function Name: RSA_PKCS_1_encrypt
