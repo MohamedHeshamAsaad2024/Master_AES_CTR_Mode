@@ -29,7 +29,7 @@ using namespace std;
  *                     P R O T O T Y P E S                   *
  *************************************************************/
 void generateKeys(mpz_class &Public_Modulus, mpz_class &Public_Exponent, mpz_class &Private_Exponent);
-void computePhi(mpz_class result, const mpz_class PrimeNumber_1, const mpz_class PrimeNumber_2);
+mpz_class computePhi(const mpz_class PrimeNumber_1, const mpz_class PrimeNumber_2) ;
 void computeGCD(mpz_class result, const mpz_class num1, const mpz_class num2);
 void generateTwoPrimeNumbers(mpz_class &PrimeNumber_1, mpz_class &PrimeNumber_2);
 void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_class OrdinaryMessage);
@@ -39,6 +39,8 @@ bool isPrime(const mpz_class& randomNumber);
 mpz_class RSA_PKCS_1_encrypt(const mpz_class &message, const mpz_class &publicExponent, const mpz_class &modulus);
 mpz_class RSA_PKCS_1_decrypt(const mpz_class &cipher, const mpz_class &privateExponent, const mpz_class &modulus);
 mpz_class modularExponentiation(mpz_class base, mpz_class exponent, mpz_class modulus);
+mpz_class modularInverse(mpz_class PublicExponent, mpz_class Phi);
+mpz_class extendedEuclidean(mpz_class FirstInteger, mpz_class SecondInteger, mpz_class &Coefficient_FirstInteger, mpz_class &Coefficient_SecondInteger);
 
 /*************************************************************
  *                           M A I N                         *
@@ -109,7 +111,7 @@ int main()
 void generateKeys(mpz_class &Public_Modulus, mpz_class &Public_Exponent, mpz_class &Private_Exponent) 
 {
     // Declare placeholders to hold the randomly generated two prime numbers
-    mpz_class Generted_PrimeNumber_1, Generted_PrimeNumber_2;
+    mpz_class Generted_PrimeNumber_1, Generted_PrimeNumber_2, phi;
 
     // Generate two prime numbers
     generateTwoPrimeNumbers(Generted_PrimeNumber_1, Generted_PrimeNumber_2);
@@ -120,30 +122,29 @@ void generateKeys(mpz_class &Public_Modulus, mpz_class &Public_Exponent, mpz_cla
     // Set  Public_Modulus to make calculation faster and optmize implementation
     Public_Exponent = "65537";
 
+    // Function to calculate Euler's Totient function for n = p * q
+    phi = computePhi(Generted_PrimeNumber_1, Generted_PrimeNumber_2);
+
     // Calculate Private_Exponent
-
-
-    Private_Exponent = "157";
+    Private_Exponent = modularInverse(Public_Exponent, phi);
 
    return;
 }
 
 // Function to calculate Euler's Totient function for n = p * q
-/* void computePhi(mpz_t result, const mpz_t PrimeNumber_1, const mpz_t PrimeNumber_2) 
+mpz_class computePhi(const mpz_class PrimeNumber_1, const mpz_class PrimeNumber_2) 
 {
-    mpz_t PrimeNumber_1_minus_1, PrimeNumber_2_minus_1;
-    mpz_inits(p_minus_1, q_minus_1, nullptr);
+    mpz_class PrimeNumber_1_minus_1, PrimeNumber_2_minus_1, result;
 
     // Compute PrimeNumber_1 - 1 and PrimeNumber_2 - 1
-    mpz_sub_ui(p_minus_1, PrimeNumber_1, 1);
-    mpz_sub_ui(q_minus_1, PrimeNumber_2, 1);
+    PrimeNumber_1_minus_1 = PrimeNumber_1 - 1;
+    PrimeNumber_2_minus_1 = PrimeNumber_2 - 1;
 
     // Compute phi(n) = (PrimeNumber_1 - 1) * (PrimeNumber_2 - 1)
-    mpz_mul(result, PrimeNumber_1_minus_1, PrimeNumber_2_minus_1);
+    result = PrimeNumber_1_minus_1 * PrimeNumber_2_minus_1;
 
-    // Clear temporary variables
-    mpz_clears(PrimeNumber_1_minus_1, PrimeNumber_2_minus_1, nullptr);
-} */
+    return result;
+}
 
 /* // Function to compute GCD using the Euclidean algorithm
 void computeGCD(mpz_t result, const mpz_t num1, const mpz_t num2) {
@@ -211,6 +212,57 @@ bool isPrime(const mpz_class& randomNumber)
 {
     int result = mpz_probab_prime_p(randomNumber.get_mpz_t(), 25);  // 25 rounds for better accuracy
     return result > 0;  // Result > 0 indicates a probable prime
+}
+
+/**
+ * Function to compute the GCD and coefficients (x, y) such that:
+ * ax + by = gcd(a, b)
+ * @param FirstInteger              - First integer
+ * @param SecondInteger             - Second integer
+ * @param Coefficient_FirstInteger  - Reference to coefficient First integer
+ * @param Coefficient_SecondInteger - Reference to coefficient SecondInteger
+ * @return gcd(FirstInteger, SecondInteger)
+ */
+mpz_class extendedEuclidean(mpz_class FirstInteger, mpz_class SecondInteger, mpz_class &Coefficient_FirstInteger, mpz_class &Coefficient_SecondInteger) 
+{
+    // Base case: if b is 0, gcd is a, and x = 1, y = 0
+    if (SecondInteger == 0) {
+        Coefficient_FirstInteger  = 1;
+        Coefficient_SecondInteger = 0;
+        return FirstInteger;
+    }
+
+    // Recursive call
+    mpz_class x1, y1; // Temporary coefficients
+    mpz_class gcd = extendedEuclidean(SecondInteger, FirstInteger % SecondInteger, x1, y1);
+
+    // Update x and y using the results of the recursive call
+    Coefficient_FirstInteger = y1;
+    Coefficient_SecondInteger = x1 - (FirstInteger / SecondInteger) * y1;
+
+    return gcd;
+}
+
+/**
+ * Function to compute the modular inverse of a modulo m using the Extended Euclidean Algorithm.
+ * The modular inverse exists if and only if gcd(a, m) = 1.
+ * @param PublicExponent - The number to find the inverse of
+ * @param Phi - The modulus
+ * @return The modular inverse of a modulo m, or -1 if no inverse exists
+ */
+mpz_class modularInverse(mpz_class PublicExponent, mpz_class Phi) 
+{
+    mpz_class x, y;
+    mpz_class gcd = extendedEuclidean(PublicExponent, Phi, x, y);
+
+    // If gcd(a, m) != 1, modular inverse does not exist
+    if (gcd != 1) {
+        cout << "Modular inverse does not exist for " << PublicExponent << " modulo " << Phi << endl;
+        return -1;
+    }
+
+    // Ensure the result is positive
+    return (x % Phi + Phi) % Phi;
 }
 
 // Converts an ordinary message to a padded message (Stub function for demonstration purposes)
