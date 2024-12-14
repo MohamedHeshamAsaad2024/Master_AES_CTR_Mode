@@ -36,8 +36,8 @@ void ConvertOrdinaryMessageToPaddedMessage(mpz_class PaddedMessage, const mpz_cl
 void ConvertPaddedMessageToOrdinaryMessage(mpz_class OrdinaryMessage, const mpz_class PaddedMessage);
 void generateRandomNumber(mpz_class randomNumber);
 bool isPrime(const mpz_class randomNumber);
-mpz_class RSA_PKCS_1_encrypt(const mpz_class message, const mpz_class publicExponent, const mpz_class modulus);
-mpz_class RSA_PKCS_1_decrypt(const mpz_class cipher, const mpz_class privateExponent, const mpz_class modulus);
+mpz_class RSA_PKCS_1_encrypt(const mpz_class &message, const mpz_class &publicExponent, const mpz_class &modulus);
+mpz_class RSA_PKCS_1_decrypt(const mpz_class &cipher, const mpz_class &privateExponent, const mpz_class &modulus);
 mpz_class modularExponentiation(mpz_class base, mpz_class exponent, mpz_class modulus);
 
 /*************************************************************
@@ -91,7 +91,7 @@ int main()
 
     // Decrypt the encrypted message using the private key
     decryptedMessage = RSA_PKCS_1_decrypt(ciphertext, Private_Exponent, Public_Modulus);
-    gmp_printf("Decrypted padded message: %Zd\n", decryptedPaddedMessage);
+    gmp_printf("Decrypted padded message: %Zd\n", decryptedMessage);
 
     // Convert the decrypted padded message back to the original message
     // ConvertPaddedMessageToOrdinaryMessage(decryptedMessage, decryptedPaddedMessage);
@@ -240,10 +240,46 @@ bool isPrime(const mpz_t randomNumber)
  * Return:
  *  cipherText (mpz_class): The encrypted message
  ************************************************************/
-mpz_class RSA_PKCS_1_encrypt(const mpz_class message, const mpz_class publicExponent, const mpz_class modulus) 
+mpz_class RSA_PKCS_1_encrypt(const mpz_class& message, const mpz_class& publicExponent, const mpz_class& modulus) 
 {
-    mpz_class cipherText = modularExponentiation(message, publicExponent, modulus);
-    
+    /* Define the number of bits to be passed to the modular exponentiation function in bytes */
+    const int chunkBits = 2048;
+
+    /* Define a mask in which 2048 bit is set to 1 to be used for extracting message chunks */
+    mpz_class mask = (mpz_class(1) << chunkBits) - 1;
+
+    /* Define a placeholder to keep track of the remaining parts of the message that haven't been encrypted */
+    mpz_class remainingMessage = message;
+
+    /* Define a placeholder for the combined encrypted message at the end of the function */
+    mpz_class cipherText = 0;
+
+    /* Define a variable to shift the encrypted chunks into their position */
+    mpz_class chunkIndex = 0;
+
+    /* Loop until the whole message is encrypted */
+    while (remainingMessage > 0) 
+    {
+        /* Extract the last 256 bytes (least significant bits) */
+        mpz_class chunk = remainingMessage & mask;
+
+        /* Encrypt the chunk */
+        mpz_class cipherChunk = modularExponentiation(chunk, publicExponent, modulus);
+
+        /* Combine the encrypted chunk into the final ciphertext using shift left */
+        mpz_class shiftAmount = chunkIndex * chunkBits;
+        mpz_mul_2exp(cipherChunk.get_mpz_t(), cipherChunk.get_mpz_t(), shiftAmount.get_ui());
+
+        /* Add the shifted chunk to the final ciphertext */
+        cipherText += cipherChunk; 
+
+        /* Shift the remaining message to process the next chunk */
+        remainingMessage >>= chunkBits;
+
+        /* Increment chunk index */
+        ++chunkIndex; 
+    }
+
     return cipherText;
 }
 
@@ -259,10 +295,46 @@ mpz_class RSA_PKCS_1_encrypt(const mpz_class message, const mpz_class publicExpo
  * Return:
  *  decryptedText (mpz_class): The decrypted message
  ************************************************************/
-mpz_class RSA_PKCS_1_decrypt(const mpz_class cipher, const mpz_class privateExponent, const mpz_class modulus) 
+mpz_class RSA_PKCS_1_decrypt(const mpz_class& cipher, const mpz_class& privateExponent, const mpz_class& modulus)
 {
-    mpz_class decryptedText = modularExponentiation(cipher, privateExponent, modulus);
-    
+    /* Define the number of bits to be passed to the modular exponentiation function in bytes */
+    const int chunkBits = 2048;
+
+    /* Define a mask in which 2048 bit is set to 1 to be used for extracting message chunks */
+    mpz_class mask = (mpz_class(1) << chunkBits) - 1;
+
+    /* Define a placeholder to keep track of the remaining parts of the message that haven't been decrypted */
+    mpz_class remainingMessage = cipher;
+
+    /* Define a placeholder for the combined decrypted message at the end of the function */
+    mpz_class decryptedText = 0;
+
+    /* Define a variable to shift the decrypted chunks into their position */
+    mpz_class chunkIndex = 0;
+
+    /* Loop until the whole message is encrypted */
+    while (remainingMessage > 0) 
+    {
+        /* Extract the last 256 bytes (least significant bits) */
+        mpz_class chunk = remainingMessage & mask;
+
+        /* Decrypt the chunk */
+        mpz_class decryptedChunk = modularExponentiation(chunk, privateExponent, modulus);
+
+        /* Combine the decrypted chunk into the final decryptedText using shift left */
+        mpz_class shiftAmount = chunkIndex * chunkBits;
+        mpz_mul_2exp(decryptedChunk.get_mpz_t(), decryptedChunk.get_mpz_t(), shiftAmount.get_ui());
+
+        /* Add the shifted chunk to the final decryptedText */
+        decryptedText += decryptedChunk; 
+
+        /* Shift the remaining message to process the next chunk */
+        remainingMessage >>= chunkBits;
+
+        /* Increment chunk index */
+        ++chunkIndex; 
+    }
+
     return decryptedText;
 }
 
