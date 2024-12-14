@@ -57,6 +57,7 @@ bool isPrime(const mpz_t randomNumber)
     return result > 0; // Result > 0 indicates a probable prime
 }
 
+//Function to generate two different prime numbers
 void generateTwoPrimeNumbers(mpz_t PrimeNumber_1,mpz_t PrimeNumber_2) 
 {
     // Generate a random 256-byte number 
@@ -122,9 +123,9 @@ void computePhi(mpz_t result, const mpz_t PrimeNumber_1, const mpz_t PrimeNumber
 // Kamaly's responsibility
 tuple<mpz_t, mpz_t, mpz_t> generateKeys() 
 {
-    mpz_t Public_Exponent, Private_Exponent, Public_Modulus,Generted_PrimeNumber_1,Generted_PrimeNumber_2,phi;
-    mpz_inits(Public_Exponent, Private_Exponent, Public_Modulus,Generted_PrimeNumber_1,Generted_PrimeNumber_2, nullptr);
-   
+    mpz_t Public_Exponent, Private_Exponent, Public_Modulus,Generted_PrimeNumber_1,Generted_PrimeNumber_2,phi,temp;
+    mpz_inits(Public_Exponent, Private_Exponent, Public_Modulus,Generted_PrimeNumber_1,Generted_PrimeNumber_2,phi,temp, nullptr);
+    bool Private_Exponent_Is_Found="No"
    //Generate two prime numbers
    generateTwoPrimeNumbers(Generted_PrimeNumber_1,Generted_PrimeNumber_2);
    //Calculate Phi value 
@@ -136,6 +137,11 @@ tuple<mpz_t, mpz_t, mpz_t> generateKeys()
    mpz_set_str(Public_Exponent,"65537",16);
 
    //Calculate Private_Exponent
+   while("Yes"==Private_Exponent_Is_Found)
+   {
+        mpz_mul(temp, PrimeNumber_1_minus_1, PrimeNumber_2_minus_1);
+        mpz_powm(,
+   }
 
 
 
