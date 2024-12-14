@@ -205,6 +205,82 @@ void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_c
     }
 }
 
+/*********************************************************************************************************************************************************************************************************************** */
+
+void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_class OrdinaryMessage) {
+    // Define key size in bytes (e.g., 256 bytes for 2048-bit RSA)
+    size_t keySize = 256;
+
+    // Convert the plaintext to a byte array
+    vector<uint8_t> plaintext = mpzToByteArray(OrdinaryMessage, OrdinaryMessage.get_str(16).size() / 2);
+
+    // Ensure the plaintext fits within the padded structure
+    if (plaintext.size() > keySize - 11) {
+        // Split the message into blocks if it's too large
+        size_t blockSize = keySize - 11;
+        size_t numBlocks = (plaintext.size() + blockSize - 1) / blockSize;  // Round up to get number of blocks
+
+        vector<uint8_t> paddedMessage;
+
+        // Process each block
+        for (size_t i = 0; i < numBlocks; ++i) {
+            size_t blockStart = i * blockSize;
+            size_t blockEnd = min(blockStart + blockSize, plaintext.size());
+            vector<uint8_t> block(plaintext.begin() + blockStart, plaintext.begin() + blockEnd);
+            
+            // Initialize the padded block vector
+            vector<uint8_t> paddedBlock(keySize, 0x00);
+            paddedBlock[0] = 0x00;
+            paddedBlock[1] = 0x02;
+
+            // Add random non-zero padding
+            size_t paddingLength = keySize - block.size() - 3;
+            srand(static_cast<unsigned>(time(0)));
+            for (size_t j = 0; j < paddingLength; ++j) {
+                uint8_t randomByte;
+                do {
+                    randomByte = rand() % 256;
+                } while (randomByte == 0x00);  // Ensure non-zero padding
+                paddedBlock[2 + j] = randomByte;
+            }
+
+            // Add the separator and the block data
+            paddedBlock[2 + paddingLength] = 0x00;
+            memcpy(&paddedBlock[3 + paddingLength], block.data(), block.size());
+
+            // Append the padded block to the final padded message
+            paddedMessage.insert(paddedMessage.end(), paddedBlock.begin(), paddedBlock.end());
+        }
+
+        // Convert the concatenated padded message to mpz_class
+        PaddedMessage = byteArrayToMpz(paddedMessage);
+    } else {
+        // If the message is small enough to fit in one block, apply padding normally
+        vector<uint8_t> paddedMessage(keySize, 0x00);
+        paddedMessage[0] = 0x00;
+        paddedMessage[1] = 0x02;
+
+        // Add random non-zero padding
+        size_t paddingLength = keySize - plaintext.size() - 3;
+        srand(static_cast<unsigned>(time(0)));
+        for (size_t i = 0; i < paddingLength; ++i) {
+            uint8_t randomByte;
+            do {
+                randomByte = rand() % 256;
+            } while (randomByte == 0x00);  // Ensure non-zero padding
+            paddedMessage[2 + i] = randomByte;
+        }
+
+        // Add the separator and plaintext
+        paddedMessage[2 + paddingLength] = 0x00;
+        memcpy(&paddedMessage[3 + paddingLength], plaintext.data(), plaintext.size());
+
+        // Convert the padded message to mpz_class
+        PaddedMessage = byteArrayToMpz(paddedMessage);
+    }
+}
+
+
 void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz_class PaddedMessage) {
     // Define key size in bytes (e.g., 256 bytes for 2048-bit RSA)
     size_t keySize = 256;
@@ -245,3 +321,4 @@ void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz
     // Convert the full plaintext back to an mpz_class
     OrdinaryMessage = byteArrayToMpz(fullPlaintext);
 }
+
