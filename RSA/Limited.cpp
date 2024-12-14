@@ -90,8 +90,6 @@ string computeRSAPrivateExponent(const string& str_p, const string& str_q, const
     return computeDecryptionExponent(str_e, phi);
 }
 
-
-
 //Kamaly's responsibility
 tuple<string, string, string> generateKeys() 
 {
@@ -104,7 +102,6 @@ tuple<string, string, string> generateKeys()
 
     return make_tuple(Public_Modulus, Public_Exponent, Private_Exponent);
 }
-
 
 //Eslam's responsibility
 // Encrypts a message using RSA with PKCS #1 padding (Stub function for demonstration purposes)
