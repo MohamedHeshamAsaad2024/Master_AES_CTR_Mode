@@ -127,9 +127,20 @@ tuple<mpz_t, mpz_t, mpz_t> generateKeys()
    
    //Generate two prime numbers
    generateTwoPrimeNumbers(Generted_PrimeNumber_1,Generted_PrimeNumber_2);
-   
    //Calculate Phi value 
    computePhi(phi,Generted_PrimeNumber_1,Generted_PrimeNumber_2);
+
+   //Calculate Public_Modulus
+   pz_mul(Public_Modulus, Generted_PrimeNumber_1, Generted_PrimeNumber_2);
+   //Set  Public_Modulus to make calculation faster and optmize implementation
+   mpz_set_str(Public_Exponent,"65537",16);
+
+   //Calculate Private_Exponent
+
+
+
+
+
 
    return make_tuple(Public_Modulus, Public_Exponent, Private_Exponent);
 }
