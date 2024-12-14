@@ -101,3 +101,47 @@ int main() {
 
     return 0;
 }
+
+
+vector<uint8_t> mpzToByteArray(const mpz_class &num, size_t byteLength) {
+    // Convert the number to a hexadecimal string
+    string hexStr = num.get_str(16);
+
+    // Calculate the number of leading zeros required
+    size_t hexLength = byteLength * 2; // Each byte is 2 hex characters
+    if (hexStr.size() < hexLength) {
+        hexStr = string(hexLength - hexStr.size(), '0') + hexStr;
+    }
+
+    // Convert the hex string to a byte array
+    vector<uint8_t> byteArray(byteLength);
+    for (size_t i = 0; i < byteLength; ++i) {
+        byteArray[i] = stoi(hexStr.substr(2 * i, 2), nullptr, 16);
+    }
+
+    return byteArray;
+}
+
+mpz_class byteArrayToMpz(const vector<uint8_t> &byteArray) {
+    string hexStr;
+    for (uint8_t byte : byteArray) {
+        char buf[3];
+        sprintf(buf, "%02X", byte); // Ensure 2-character hex representation
+        hexStr += buf;
+    }
+    return mpz_class(hexStr, 16); // Convert from hex string to mpz_class
+}
+
+mpz_class enforceLength(const mpz_class &num, size_t byteLength) {
+    string hexStr = num.get_str(16);
+
+    // Calculate the required hex length
+    size_t hexLength = byteLength * 2;
+    if (hexStr.size() < hexLength) {
+        hexStr = string(hexLength - hexStr.size(), '0') + hexStr;
+    }
+
+    return mpz_class(hexStr, 16);
+}
+
+
