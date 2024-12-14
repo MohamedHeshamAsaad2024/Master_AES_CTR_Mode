@@ -31,11 +31,11 @@ using namespace std;
 void generateKeys(mpz_class &Public_Modulus, mpz_class &Public_Exponent, mpz_class &Private_Exponent);
 void computePhi(mpz_class result, const mpz_class PrimeNumber_1, const mpz_class PrimeNumber_2);
 void computeGCD(mpz_class result, const mpz_class num1, const mpz_class num2);
-void generateTwoPrimeNumbers(mpz_class PrimeNumber_1,mpz_class PrimeNumber_2);
+void generateTwoPrimeNumbers(mpz_class &PrimeNumber_1, mpz_class &PrimeNumber_2);
 void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_class OrdinaryMessage);
 void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz_class PaddedMessage);
-void generateRandomNumber(mpz_class randomNumber);
-bool isPrime(const mpz_class randomNumber);
+void generateRandomNumber(mpz_class &randomNumber);
+bool isPrime(const mpz_class& randomNumber);
 mpz_class RSA_PKCS_1_encrypt(const mpz_class &message, const mpz_class &publicExponent, const mpz_class &modulus);
 mpz_class RSA_PKCS_1_decrypt(const mpz_class &cipher, const mpz_class &privateExponent, const mpz_class &modulus);
 mpz_class modularExponentiation(mpz_class base, mpz_class exponent, mpz_class modulus);
@@ -72,31 +72,31 @@ int main()
     generateKeys(Public_Modulus, Public_Exponent, Private_Exponent);
 
     // Display the generated RSA keys
-    gmp_printf("Public Key (Public_Modulus, Public_Exponent): (%Zd, %Zd)\n", Public_Modulus, Public_Exponent);
-    gmp_printf("Private Key (Private_Exponent): (%Zd)\n", Private_Exponent);
+    gmp_printf("\nPublic Key (Public_Modulus, Public_Exponent):\n(%Zx, %Zd)\n", Public_Modulus, Public_Exponent);
+    gmp_printf("\nPrivate Key (Private_Exponent):\n(%Zx)\n", Private_Exponent);
 
     // Set the message to be encrypted. 
     // The second argument is set to 10 in case of decimal value and set to 16 in case of hex value
     message.set_str("31", 10);
 
     // Display the original message
-    gmp_printf("Original message: %Zd\n", message);
+    gmp_printf("\nOriginal message in hexadecimal:\n%Zx\n", message.get_mpz_t());
 
     // Convert the ordinary message to a padded message
     ConvertOrdinaryMessageToPaddedMessage(Padded_message, message);
-    gmp_printf("Padded message: %Zd\n", Padded_message);
+    gmp_printf("\nPadded message in hexadecimal:\n%Zx\n", Padded_message.get_mpz_t());
 
     // Encrypt the padded message using the public key
     ciphertext = RSA_PKCS_1_encrypt(Padded_message, Public_Exponent, Public_Modulus);
-    gmp_printf("Encrypted message: %Zd\n", ciphertext);
+    gmp_printf("\nEncrypted message:\n%Zx\n", ciphertext.get_mpz_t());
 
     // Decrypt the encrypted message using the private key
     decryptedPaddedMessage = RSA_PKCS_1_decrypt(ciphertext, Private_Exponent, Public_Modulus);
-    gmp_printf("Decrypted padded message: %Zd\n", decryptedPaddedMessage);
+    gmp_printf("\nDecrypted padded message:\n%Zx\n", decryptedPaddedMessage.get_mpz_t());
 
     // Convert the decrypted padded message back to the original message
     ConvertPaddedMessageToOrdinaryMessage(decryptedMessage, decryptedPaddedMessage);
-    gmp_printf("Decrypted message: %Zd\n", decryptedMessage);
+    gmp_printf("\nDecrypted message:\n%Zx\n", decryptedMessage.get_mpz_t());
 
     return 0;
 }
@@ -108,29 +108,22 @@ int main()
 // Kamaly's responsibility
 void generateKeys(mpz_class &Public_Modulus, mpz_class &Public_Exponent, mpz_class &Private_Exponent) 
 {
-    /* mpz_class Generted_PrimeNumber_1, Generted_PrimeNumber_2, phi,temp;
-    mpz_inits(Public_Exponent, Private_Exponent, Public_Modulus,Generted_PrimeNumber_1,Generted_PrimeNumber_2,phi,temp, nullptr);
-    bool Private_Exponent_Is_Found="No"
-    //Generate two prime numbers
-    generateTwoPrimeNumbers(Generted_PrimeNumber_1,Generted_PrimeNumber_2);
-    //Calculate Phi value 
-    computePhi(phi,Generted_PrimeNumber_1,Generted_PrimeNumber_2);
+    // Declare placeholders to hold the randomly generated two prime numbers
+    mpz_class Generted_PrimeNumber_1, Generted_PrimeNumber_2;
 
-    //Calculate Public_Modulus
-    pz_mul(Public_Modulus, Generted_PrimeNumber_1, Generted_PrimeNumber_2);
-    //Set  Public_Modulus to make calculation faster and optmize implementation
-    mpz_set_str(Public_Exponent,"65537",16);
+    // Generate two prime numbers
+    generateTwoPrimeNumbers(Generted_PrimeNumber_1, Generted_PrimeNumber_2);
 
-    //Calculate Private_Exponent
-    while("Yes"==Private_Exponent_Is_Found)
-    {
-        mpz_mul(temp, PrimeNumber_1_minus_1, PrimeNumber_2_minus_1);
-        mpz_powm(,
-    } */
+    // Calculate Public_Modulus
+    Public_Modulus = Generted_PrimeNumber_1 * Generted_PrimeNumber_2;
 
-   Public_Exponent = "17";
-   Private_Exponent = "157";
-   Public_Modulus = "2773";
+    // Set  Public_Modulus to make calculation faster and optmize implementation
+    Public_Exponent = "65537";
+
+    // Calculate Private_Exponent
+
+
+    Private_Exponent = "157";
 
    return;
 }
@@ -175,26 +168,27 @@ void computeGCD(mpz_t result, const mpz_t num1, const mpz_t num2) {
     mpz_clears(a, b, temp, nullptr);
 } */
 
-/* //Function to generate two different prime numbers
-void generateTwoPrimeNumbers(mpz_t PrimeNumber_1,mpz_t PrimeNumber_2) 
+//Function to generate two different prime numbers
+void generateTwoPrimeNumbers(mpz_class &PrimeNumber_1, mpz_class &PrimeNumber_2)
 {
-    // Generate a random 256-byte number 
-    mpz_t randomNumber; 
-    mpz_init(randomNumber);    
-
-    generateRandomNumber(randomNumber);
-    if(isPrime(const mpz_t randomNumber)=="Yes") PrimeNumber_1=randomNumber;
+    mpz_class randomNumber;  // mpz_class variable to store generated random numbers
     
+    // Generate a prime number for PrimeNumber_1
+    do {
+        generateRandomNumber(randomNumber);  // Generate a random number
+    } while (!isPrime(randomNumber));  // Keep generating until it's prime
+    PrimeNumber_1 = randomNumber;  // Assign the prime number to PrimeNumber_1
 
-    generateRandomNumber(randomNumber);
-    if(isPrime(const mpz_t randomNumber)=="Yes") PrimeNumber_2=randomNumber;
+    // Generate a prime number for PrimeNumber_2
+    do {
+        generateRandomNumber(randomNumber);  // Generate a random number
+    } while (!isPrime(randomNumber));  // Keep generating until it's prime
+    PrimeNumber_2 = randomNumber;  // Assign the prime number to PrimeNumber_2
+}
 
-    // Clear GMP variables 
-    mpz_clear(randomNumber);
-} 
 
 // Function to generate a random 256-byte number
-void generateRandomNumber(mpz_t randomNumber) 
+void generateRandomNumber(mpz_class &randomNumber)  
 {
     // Initialize GMP random state
     gmp_randstate_t state;
@@ -204,18 +198,20 @@ void generateRandomNumber(mpz_t randomNumber)
     std::random_device rd;
     unsigned long seed = rd();
     gmp_randseed_ui(state, seed);
-    mpz_urandomb(randomNumber, state, 256 * 8); // 256 bytes = 256 * 8 bits
 
+    // Generate a random number of 1024 such that when multiplicated by another 1024 bit it produces 2048 exponent
+    mpz_urandomb(randomNumber.get_mpz_t(), state, 1024);
 
+    // Clear random state
     gmp_randclear(state);
 }
 
 // Function to check if a number is prime
-bool isPrime(const mpz_t randomNumber) 
+bool isPrime(const mpz_class& randomNumber) 
 {
-    int result = mpz_probab_prime_p(randomNumber, 25); // 25 rounds of Miller-Rabin tests
-    return result > 0; // Result > 0 indicates a probable prime
-} */
+    int result = mpz_probab_prime_p(randomNumber.get_mpz_t(), 25);  // 25 rounds for better accuracy
+    return result > 0;  // Result > 0 indicates a probable prime
+}
 
 // Converts an ordinary message to a padded message (Stub function for demonstration purposes)
 // Gamel's responsibility
