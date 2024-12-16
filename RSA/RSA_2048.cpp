@@ -218,11 +218,62 @@ void generateRandomNumber(mpz_class &randomNumber)
     gmp_randclear(state);
 }
 
-// Function to check if a number is prime
-bool isPrime(const mpz_class& randomNumber) 
+// Function to calculate the Jacobi symbol (r/p)
+mpz_class jacobi(mpz_class r, mpz_class p) 
 {
-    int result = mpz_probab_prime_p(randomNumber.get_mpz_t(), 25);  // 25 rounds for better accuracy
-    return result > 0;  // Result > 0 indicates a probable prime
+
+    // Calculate the equations 
+    mpz_class Odd_power= (r - 1) * (p - 1) / 4; 
+    mpz_class Even_power = (p * p - 1) / 8;
+    if (r == 0) return (p == 1) ? 1 : 0;  // Base case: Jacobi symbol is 0 if r is 0, unless p is 1
+    if (r == 1) return 1;  // Base case: Jacobi symbol is 1 if r is 1
+    mpz_class result = 1;
+    if (r % 2 == 0) 
+    {  // Check if r is even
+        result = jacobi(r / 2, p);  // Recursively calculate Jacobi symbol for half of r
+        result = result*pow(-1,Even_power);  // Adjust sign 
+    } else 
+    {  // When r is odd
+        result = jacobi(p % r, r);  // Recursively calculate Jacobi symbol for p mod r
+        result = result*pow(-1,Odd_power);   // Adjust sign 
+    }
+    return result;
+}
+
+
+
+// Function to compute GCD (Greatest Common Divisor) of a and b
+int computeGCD(mpz_class a, mpz_class b) 
+{
+    while (b != 0) 
+    {  // Loop until b becomes 0
+        mpz_class t = b;  // Store b in temporary variable
+        b = a % b;  // Update b to a modulo b
+        a = t;  // Update a to temporary variable
+    }
+    return a;  // Return the GCD
+}
+
+// Function to perform the Solovay-Strassen primality test
+bool isPrime(mpz_class p, int k = 5) 
+{
+    if (p == 2) return true;  // 2 is prime
+    if (p < 2 || p % 2 == 0) return false;  // No even number less than 2 is prime
+
+    for (int i = 0; i < k; ++i) 
+    {
+        mpz_class r = rand() % (p - 2) + 2;  // Random integer in range [2, p-1]
+        
+        // Check if r and p are coprime
+        if (computeGCD(r, p) != 1)  return false;
+        
+        int jacobian = (p + jacobi(r, p)) % p;  // Calculate Jacobi symbol and adjust to be positive
+        mpz_class mod = modularExponentiation(r, (p - 1) / 2, p);  // Compute r^((p-1)/2) mod p
+
+        if (jacobian == 0 || mod != jacobian)  // If condition fails, p is composite
+            return false;
+    }
+    return true;  // Probably prime if all tests passed
 }
 
 /**
