@@ -40,7 +40,8 @@ void generateTwoPrimeNumbers(mpz_class &PrimeNumber_1, mpz_class &PrimeNumber_2)
 void ConvertOrdinaryMessageToPaddedMessage(mpz_class &PaddedMessage, const mpz_class OrdinaryMessage);
 void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz_class PaddedMessage);
 void generateRandomNumber(mpz_class &randomNumber);
-bool isPrime(const mpz_class& randomNumber);
+mpz_class jacobi(mpz_class r, mpz_class p);
+bool isPrime(mpz_class p, mpz_class k);
 mpz_class RSA_PKCS_1_encrypt(const mpz_class &message, const mpz_class &publicExponent, const mpz_class &modulus);
 mpz_class RSA_PKCS_1_decrypt(const mpz_class &cipher, const mpz_class &privateExponent, const mpz_class &modulus);
 mpz_class modularExponentiation(mpz_class base, mpz_class exponent, mpz_class modulus);
@@ -157,29 +158,6 @@ mpz_class computePhi(const mpz_class PrimeNumber_1, const mpz_class PrimeNumber_
     return result;
 }
 
-/* // Function to compute GCD using the Euclidean algorithm
-void computeGCD(mpz_t result, const mpz_t num1, const mpz_t num2) {
-    mpz_t a, b, temp;
-    mpz_inits(a, b, temp, nullptr);
-
-    // Initialize a and b with num1 and num2
-    mpz_set(a, num1);
-    mpz_set(b, num2);
-
-    // Apply Euclidean algorithm
-    while (mpz_cmp_ui(b, 0) != 0) {
-        mpz_mod(temp, a, b); // temp = a % b
-        mpz_set(a, b);       // a = b
-        mpz_set(b, temp);    // b = temp
-    }
-
-    // Set result to a (the GCD)
-    mpz_set(result, a);
-
-    // Clear mpz_t variables
-    mpz_clears(a, b, temp, nullptr);
-} */
-
 //Function to generate two different prime numbers
 void generateTwoPrimeNumbers(mpz_class &PrimeNumber_1, mpz_class &PrimeNumber_2)
 {
@@ -188,13 +166,13 @@ void generateTwoPrimeNumbers(mpz_class &PrimeNumber_1, mpz_class &PrimeNumber_2)
     // Generate a prime number for PrimeNumber_1
     do {
         generateRandomNumber(randomNumber);  // Generate a random number
-    } while (!isPrime(randomNumber));  // Keep generating until it's prime
+    } while (!isPrime(randomNumber, 5));  // Keep generating until it's prime
     PrimeNumber_1 = randomNumber;  // Assign the prime number to PrimeNumber_1
 
     // Generate a prime number for PrimeNumber_2
     do {
         generateRandomNumber(randomNumber);  // Generate a random number
-    } while (!isPrime(randomNumber));  // Keep generating until it's prime
+    } while (!isPrime(randomNumber, 5));  // Keep generating until it's prime
     PrimeNumber_2 = randomNumber;  // Assign the prime number to PrimeNumber_2
 }
 
@@ -221,32 +199,29 @@ void generateRandomNumber(mpz_class &randomNumber)
 // Function to calculate the Jacobi symbol (r/p)
 mpz_class jacobi(mpz_class r, mpz_class p) 
 {
-
-    // Calculate the equations 
-    mpz_class Odd_power= (r - 1) * (p - 1) / 4; 
-    mpz_class Even_power = (p * p - 1) / 8;
-    mpz_class Sign;
     if (r == 0) return (p == 1) ? 1 : 0;  // Base case: Jacobi symbol is 0 if r is 0, unless p is 1
     if (r == 1) return 1;  // Base case: Jacobi symbol is 1 if r is 1
+
     mpz_class result = 1;
-    if (r % 2 == 0) 
-    {  // Check if r is even
-        result = jacobi(r / 2, p);  // Recursively calculate Jacobi symbol for half of r
-        mpz_pow_ui(Sign.get_mpz_t(), -1, Even_power);// Adjust sign
-        result=result*Sign;
-    } else 
-    {  // When r is odd
-        result = jacobi(p % r, r);  // Recursively calculate Jacobi symbol for p mod r
-        mpz_pow_ui(Sign.get_mpz_t(), -1, Odd_power); // Adjust sign
-        result=result*Sign;
+    if (r % 2 == 0) {  // Check if r is even
+        result = jacobi(r / 2, p);  // Recursive call
+        mpz_class Even_power = (p * p - 1) / 8;  // Calculate exponent
+        if (Even_power.get_ui() % 2 == 1) {  // Adjust sign if exponent is odd
+            result = -result;
+        }
+    } else {  // When r is odd
+        result = jacobi(p % r, r);  // Recursive call
+        mpz_class Odd_power = (r - 1) * (p - 1) / 4;  // Calculate exponent
+        if (Odd_power.get_ui() % 2 == 1) {  // Adjust sign if exponent is odd
+            result = -result;
+        }
     }
     return result;
 }
 
 
-
 // Function to compute GCD (Greatest Common Divisor) of a and b
-int computeGCD(mpz_class a, mpz_class b) 
+mpz_class computeGCD(mpz_class a, mpz_class b) 
 {
     while (b != 0) 
     {  // Loop until b becomes 0
@@ -258,19 +233,19 @@ int computeGCD(mpz_class a, mpz_class b)
 }
 
 // Function to perform the Solovay-Strassen primality test
-bool isPrime(mpz_class p, int k = 5) 
+bool isPrime(mpz_class p, mpz_class k = 5) 
 {
     if (p == 2) return true;  // 2 is prime
     if (p < 2 || p % 2 == 0) return false;  // No even number less than 2 is prime
 
-    for (int i = 0; i < k; ++i) 
+    for (mpz_class i = 0; i < k; ++i) 
     {
         mpz_class r = rand() % (p - 2) + 2;  // Random integer in range [2, p-1]
         
         // Check if r and p are coprime
         if (computeGCD(r, p) != 1)  return false;
         
-        int jacobian = (p + jacobi(r, p)) % p;  // Calculate Jacobi symbol and adjust to be positive
+        mpz_class jacobian = (p + jacobi(r, p)) % p;  // Calculate Jacobi symbol and adjust to be positive
         mpz_class mod = modularExponentiation(r, (p - 1) / 2, p);  // Compute r^((p-1)/2) mod p
 
         if (jacobian == 0 || mod != jacobian)  // If condition fails, p is composite
@@ -501,43 +476,7 @@ void ConvertPaddedMessageToOrdinaryMessage(mpz_class &OrdinaryMessage, const mpz
  ************************************************************/
 mpz_class RSA_PKCS_1_encrypt(const mpz_class& message, const mpz_class& publicExponent, const mpz_class& modulus) 
 {
-    /* Define the number of bits to be passed to the modular exponentiation function in bytes */
-    const int chunkBits = 2048;
-
-    /* Define a mask in which 2048 bit is set to 1 to be used for extracting message chunks */
-    mpz_class mask = (mpz_class(1) << chunkBits) - 1;
-
-    /* Define a placeholder to keep track of the remaining parts of the message that haven't been encrypted */
-    mpz_class remainingMessage = message;
-
-    /* Define a placeholder for the combined encrypted message at the end of the function */
-    mpz_class cipherText = 0;
-
-    /* Define a variable to shift the encrypted chunks into their position */
-    mpz_class chunkIndex = 0;
-
-    /* Loop until the whole message is encrypted */
-    while (remainingMessage > 0) 
-    {
-        /* Extract the last 256 bytes (least significant bits) */
-        mpz_class chunk = remainingMessage & mask;
-
-        /* Encrypt the chunk */
-        mpz_class cipherChunk = modularExponentiation(chunk, publicExponent, modulus);
-
-        /* Combine the encrypted chunk into the final ciphertext using shift left */
-        mpz_class shiftAmount = chunkIndex * chunkBits;
-        mpz_mul_2exp(cipherChunk.get_mpz_t(), cipherChunk.get_mpz_t(), shiftAmount.get_ui());
-
-        /* Add the shifted chunk to the final ciphertext */
-        cipherText += cipherChunk; 
-
-        /* Shift the remaining message to process the next chunk */
-        remainingMessage >>= chunkBits;
-
-        /* Increment chunk index */
-        ++chunkIndex; 
-    }
+    mpz_class cipherText = modularExponentiation(message, publicExponent, modulus);
 
     return cipherText;
 }
@@ -556,43 +495,7 @@ mpz_class RSA_PKCS_1_encrypt(const mpz_class& message, const mpz_class& publicEx
  ************************************************************/
 mpz_class RSA_PKCS_1_decrypt(const mpz_class& cipher, const mpz_class& privateExponent, const mpz_class& modulus)
 {
-    /* Define the number of bits to be passed to the modular exponentiation function in bytes */
-    const int chunkBits = 2048;
-
-    /* Define a mask in which 2048 bit is set to 1 to be used for extracting message chunks */
-    mpz_class mask = (mpz_class(1) << chunkBits) - 1;
-
-    /* Define a placeholder to keep track of the remaining parts of the message that haven't been decrypted */
-    mpz_class remainingMessage = cipher;
-
-    /* Define a placeholder for the combined decrypted message at the end of the function */
-    mpz_class decryptedText = 0;
-
-    /* Define a variable to shift the decrypted chunks into their position */
-    mpz_class chunkIndex = 0;
-
-    /* Loop until the whole message is encrypted */
-    while (remainingMessage > 0) 
-    {
-        /* Extract the last 256 bytes (least significant bits) */
-        mpz_class chunk = remainingMessage & mask;
-
-        /* Decrypt the chunk */
-        mpz_class decryptedChunk = modularExponentiation(chunk, privateExponent, modulus);
-
-        /* Combine the decrypted chunk into the final decryptedText using shift left */
-        mpz_class shiftAmount = chunkIndex * chunkBits;
-        mpz_mul_2exp(decryptedChunk.get_mpz_t(), decryptedChunk.get_mpz_t(), shiftAmount.get_ui());
-
-        /* Add the shifted chunk to the final decryptedText */
-        decryptedText += decryptedChunk; 
-
-        /* Shift the remaining message to process the next chunk */
-        remainingMessage >>= chunkBits;
-
-        /* Increment chunk index */
-        ++chunkIndex; 
-    }
+    mpz_class decryptedText = modularExponentiation(cipher, privateExponent, modulus);
 
     return decryptedText;
 }
