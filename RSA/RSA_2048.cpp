@@ -225,17 +225,20 @@ mpz_class jacobi(mpz_class r, mpz_class p)
     // Calculate the equations 
     mpz_class Odd_power= (r - 1) * (p - 1) / 4; 
     mpz_class Even_power = (p * p - 1) / 8;
+    mpz_class Sign;
     if (r == 0) return (p == 1) ? 1 : 0;  // Base case: Jacobi symbol is 0 if r is 0, unless p is 1
     if (r == 1) return 1;  // Base case: Jacobi symbol is 1 if r is 1
     mpz_class result = 1;
     if (r % 2 == 0) 
     {  // Check if r is even
         result = jacobi(r / 2, p);  // Recursively calculate Jacobi symbol for half of r
-        result = result*pow(-1,Even_power);  // Adjust sign 
+        mpz_pow_ui(Sign.get_mpz_t(), -1, Even_power);// Adjust sign
+        result=result*Sign;
     } else 
     {  // When r is odd
         result = jacobi(p % r, r);  // Recursively calculate Jacobi symbol for p mod r
-        result = result*pow(-1,Odd_power);   // Adjust sign 
+        mpz_pow_ui(Sign.get_mpz_t(), -1, Odd_power); // Adjust sign
+        result=result*Sign;
     }
     return result;
 }
