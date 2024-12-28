@@ -23,7 +23,6 @@
  ********************************************************************/
 #define STATE_ROW_SIZE              5U
 #define STATE_COLUMN_SIZE           5U
-#define STATE_LANE_SIZE             64U
 
 /********************************************************************
  **************************** GLOBALS *******************************
@@ -32,8 +31,8 @@
 /********************************************************************
  ************************* Prototypes *******************************
  ********************************************************************/
-void SHA_ComputePi(uint8_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_SIZE]);
-void SHA_ComputeChi(uint8_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_SIZE]);
+void SHA_ComputePi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
+void SHA_ComputeChi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
 void SHA_MultiRatePadding(const std::string& inputMessage, std::vector<uint8_t>& paddedMessage);
 
 /********************************************************************
@@ -41,7 +40,7 @@ void SHA_MultiRatePadding(const std::string& inputMessage, std::vector<uint8_t>&
  ********************************************************************/
 int main() 
 {
-    uint8_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_SIZE] = {0};
+    uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
 
     // Example: Perform pi and chi steps on the state
     SHA_ComputePi(state);
@@ -67,20 +66,17 @@ int main()
  * Return:
  *  void
  ************************************************************/
-void SHA_ComputePi(uint8_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_SIZE]) 
+void SHA_ComputePi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) 
 {
     /* Define a temprary state to hold the original states before computation */
-    uint8_t tempState[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_SIZE];
+    uint64_t tempState[STATE_ROW_SIZE][STATE_COLUMN_SIZE];
 
     /* Copy the current state into the temporary State */
     for (int x = 0; x < STATE_ROW_SIZE; ++x) 
     {
         for (int y = 0; y < STATE_COLUMN_SIZE; ++y) 
         {
-            for (int z = 0; z < STATE_LANE_SIZE; ++z) 
-            {
-                tempState[x][y][z] = state[x][y][z];
-            }
+            tempState[x][y] = state[x][y];
         }
     }
 
@@ -89,10 +85,7 @@ void SHA_ComputePi(uint8_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_S
     {
         for (int y = 0; y < STATE_COLUMN_SIZE; ++y) 
         {
-            for (int z = 0; z < STATE_LANE_SIZE; ++z) 
-            {
-                state[x][y][z] = tempState[(x + 3 * y) % 5][x][z];
-            }
+            state[x][y] = tempState[(x + 3 * y) % 5][x];
         }
     }
 }
@@ -114,20 +107,17 @@ void SHA_ComputePi(uint8_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_S
  * Return:
  *  void
  ************************************************************/
-void SHA_ComputeChi(uint8_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_SIZE]) 
+void SHA_ComputeChi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) 
 {
-    /* Define a temprary state to hold the original states before computation */
-    uint8_t tempState[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_SIZE];
+    /* Define a temporary state to hold the original states before computation */
+    uint64_t tempState[STATE_ROW_SIZE][STATE_COLUMN_SIZE];
 
-    /* Copy the current state into the temporary State */
+    /* Copy the current state into the temporary state */
     for (int x = 0; x < STATE_ROW_SIZE; ++x) 
     {
         for (int y = 0; y < STATE_COLUMN_SIZE; ++y) 
         {
-            for (int z = 0; z < STATE_LANE_SIZE; ++z) 
-            {
-                tempState[x][y][z] = state[x][y][z];
-            }
+            tempState[x][y] = state[x][y];
         }
     }
 
@@ -136,11 +126,9 @@ void SHA_ComputeChi(uint8_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE][STATE_LANE_
     {
         for (int y = 0; y < STATE_COLUMN_SIZE; ++y) 
         {
-            for (int z = 0; z < STATE_LANE_SIZE; ++z) 
-            {
-                state[x][y][z] = tempState[x][y][z] ^
-                                 ((~tempState[(x + 1) % 5][y][z]) & tempState[(x + 2) % 5][y][z]);
-            }
+            state[x][y] = tempState[x][y] ^ 
+                          ((~tempState[(x + 1) % STATE_ROW_SIZE][y]) & 
+                           tempState[(x + 2) % STATE_ROW_SIZE][y]);
         }
     }
 }
