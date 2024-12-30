@@ -33,16 +33,20 @@
  ********************************************************************/
 void SHA_ComputePi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
 void SHA_ComputeChi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
-void SHA_MultiRatePadding(const std::string& inputMessage, std::vector<uint8_t>& paddedMessage);
+std::vector<uint8_t> SHA_MultiRatePadding(const std::string& input, int rate);
 
 /********************************************************************
  ************************* Main Function ****************************
  ********************************************************************/
 int main() 
 {
-    uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
+    /* Exampl usage of padding scheme */
+    std::string message = "Hello, SHA-3!";
+    size_t rate = 1088;
+    std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(message, rate);
 
     // Example: Perform pi and chi steps on the state
+    uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
     SHA_ComputePi(state);
     SHA_ComputeChi(state);
 
@@ -136,67 +140,60 @@ void SHA_ComputeChi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
 /*************************************************************
  * Function Name: SHA_MultiRatePadding
  * Descriotion:
- *  This function performs padding rule pad10*1 which adds
- *  padding to the input message to make it multiples of
- *  the rate so that it can be partioned during the SPONGE
- *  operation.
+ *  This function performs does two things:
+ *  - Append the hash mode identifiers (01)
+ *  - Padding rule pad10*1 which adds padding to the input
+ *    message to make it multiples of the rate so that it 
+ *    can be partioned during the SPONGE operation.
+ * Note:
+ *   - The hash identifier (01) and the starting padding bit (1) are byte-aligned as 0x06
+ *   - The terminating padding bit (1) is byte-aligned as 0x80
  * Arguments:
  *  inputMessage (string): Input string to be hashed
  *  paddedMessage (vector): the input string after being padded
  * Return:
- *  void
+ *  vector: The padded message with the hash mode prefix
  ************************************************************/
-void SHA_MultiRatePadding(const std::string& inputMessage, std::vector<uint8_t>& paddedMessage) 
+std::vector<uint8_t> SHA_MultiRatePadding(const std::string& input, int rate) 
 {
-    /* Define the rate for width of 1600 and capacity 512; r = b - c = 1088*/
-    int rate = 1088;
+    /* Convert the input string to a vector of bytes */
+    std::vector<uint8_t> paddedMessage(input.begin(), input.end());
 
-    /* Compute length of input message in bits */
-    int InputMessageLength = inputMessage.size() * 8;
+    /* Determine the rate in bytes */
+    size_t rateInBytes = rate / 8;
 
-    /* Compute the number of needed zeros (j) in the padding through j = (-InputMessageLength - 2) mod rate */
-    int j = (-InputMessageLength - 2) % rate;
+    /* Compute the length of the input in bytes */
+    size_t m = paddedMessage.size();
 
-    /* Ensure that j is non-negative number */
-    if (j < 0) 
+    /* Calculate the number of padding bytes (q) */
+    size_t q = rateInBytes - (m % rateInBytes);
+
+    /* Append the padding bytes depending on the needed number of padding bytes (q) */
+    if (q == 1) 
     {
-        j += rate;
+        /* If the input message is multiple of the rate, then we only append one byte */
+        paddedMessage.push_back(0x86);
+    } 
+    else if (q == 2) 
+    {
+        /* If two bytes are needed, we set the first byte 0x06 as the prefix byte */
+        paddedMessage.push_back(0x06);
+        /* We add the last byte which terminates the padding */
+        paddedMessage.push_back(0x80);
+    } else 
+    {
+        /* If more than 2 bytes are needed, we set the first byte 0x06 as the prefix byte */
+        paddedMessage.push_back(0x06);
+
+        /* Add intermediate zero bytes */
+        for (size_t i = 0; i < q - 2; ++i) 
+        {
+            paddedMessage.push_back(0x00);
+        }
+
+        /* We add the last byte which terminates the padding */
+        paddedMessage.push_back(0x80);
     }
 
-    /* Compute the total length of the padding which is 2 (The sentinal 1's) plus j (The number of intermediate zeros) */
-    int paddingLength = 2 + j;
-
-    /* Clear the output vector in preparation to hold the padded message */
-    paddedMessage.clear();
-
-    /* Add input message as bytes in the padded message */
-    for (char c : inputMessage) 
-    {
-        paddedMessage.push_back(static_cast<uint8_t>(c));
-    }
-
-    /* Add "1" bit which is 0x80 = 0b10000000 (MSB = 1) */
-    paddedMessage.push_back(static_cast<uint8_t>(0x80));
-
-    /* Compute the number of needed zero bytes */
-    int fullZeroBytes = (paddingLength - 1) / 8;
-
-    /* Compute the number of remaining zero bits in the last byte if any */
-    int remainingBits = (paddingLength - 1) % 8;
-
-    /* Append the full zero bytes if any */
-    for (int i = 0; i < fullZeroBytes; ++i) 
-    {
-        paddedMessage.push_back(0x00);
-    }
-
-    /* Append the remaining zero bits if any */
-    if (remainingBits > 0) 
-    {
-        uint8_t lastPartialByte = (1 << (7 - remainingBits)) - 1;
-        paddedMessage.push_back(lastPartialByte);
-    }
-
-    /* Add final "1" bit by ORing the last bit as 1 */
-    paddedMessage.back() |= 0x01;
+    return paddedMessage;
 }
