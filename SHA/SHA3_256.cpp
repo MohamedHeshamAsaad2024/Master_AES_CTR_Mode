@@ -13,6 +13,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <algorithm>
 
 /********************************************************************
  *********************** Configurations *****************************
@@ -27,13 +28,36 @@
 /********************************************************************
  **************************** GLOBALS *******************************
  ********************************************************************/
+// Constants for SHA3-224
+int RATE = 1152;
+int CAPACITY = 448;
+int BLOCK_SIZE = RATE + CAPACITY; // b = 1600
+int OUTPUT_LENGTH = 224;
+int ROUNDS = 24;
+int STATE_SIZE = STATE_ROW_SIZE * STATE_COLUMN_SIZE * 64;  // 1600 bits
+// Type aliases for clarity
+using State = std::vector<uint64_t>;
 
+// Round constants for Iota step (first 24 rounds)
+const uint64_t RC[24] = {
+    0x0000000000000001, 0x0000000000008082, 0x800000000000808a,
+    0x8000000080008000, 0x000000000000808b, 0x0000000080000001,
+    0x8000000080008081, 0x8000000000008009, 0x000000000000008a,
+    0x0000000000000088, 0x0000000080008009, 0x000000008000000a,
+    0x000000008000808b, 0x800000000000008b, 0x8000000000008089,
+    0x8000000000008003, 0x8000000000008002, 0x8000000000000080,
+    0x000000000000800a, 0x800000008000000a, 0x8000000080008081,
+    0x8000000000008080, 0x0000000080000001, 0x8000000080008008
+};
 /********************************************************************
  ************************* Prototypes *******************************
  ********************************************************************/
+void KeccakF(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
+void SHA_ComputeTheta(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
+void SHA_ComputeRho(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
 void SHA_ComputePi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
 void SHA_ComputeChi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
-void SHA_ComputeTheta(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
+void SHA_ComputeIota(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE], int round);
 std::vector<uint8_t> SHA_MultiRatePadding(const std::string& input, int rate);
 
 /********************************************************************
@@ -41,16 +65,29 @@ std::vector<uint8_t> SHA_MultiRatePadding(const std::string& input, int rate);
  ********************************************************************/
 int main() 
 {
+    // 1. Padding
     /* Exampl usage of padding scheme */
     std::string message = "Hello, SHA-3!";
-    size_t rate = 1088;
-    std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(message, rate);
-
-    // Example: Perform pi and chi steps on the state
+    std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(message, RATE);
+    // 2.1 Absorbing Phase
     uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
-    SHA_ComputeTheta(state);
-    SHA_ComputePi(state);
-    SHA_ComputeChi(state);
+
+     // Process the padded message in blocks of size RATE
+    size_t rateInBytes = RATE / 8;
+    for (size_t i = 0; i < paddedMessage.size(); i += rateInBytes) {
+        // a. Absorbing Phase: XOR input block with state
+        for (size_t j = 0; j < rateInBytes && i + j < paddedMessage.size(); ++j) {
+            state[j / 8][j % 8] ^= paddedMessage[i + j]; 
+        }
+        // b. Keccak-f Permutation
+        KeccakF(state);
+    }
+    std::vector<uint8_t> outputHash;
+     for(int i = 0; i < (OUTPUT_LENGTH / 8); ++i)
+    {
+        outputHash.push_back(state[i/8][i%8]);
+    }
+    // 2.2 Squeezing Phase
 
     return 0;
 }
@@ -59,6 +96,56 @@ int main()
 /********************************************************************
  **************************** Functions *****************************
  ********************************************************************/
+/*************************************************************
+ * Function Name: KeccakF
+ * Description:
+ *   This function implements the Keccak-f permutation, the core
+ *   transformation of the SHA3 algorithm. It iteratively applies
+ *   five internal step mappings (Theta, Rho, Pi, Chi, and Iota)
+ *   for a fixed number of rounds (ROUNDS) to the given state.
+ *
+ * Arguments:
+ *   state (uint64_t[STATE_ROW_SIZE][STATE_COLUMN_SIZE]):
+ *     The state array, represented as a 2D array of 64-bit
+ *     unsigned integers.  This array is modified in-place by
+ *     the Keccak-f permutation.
+ *
+ * Return:
+ *   void (The function modifies the state array directly)
+ ************************************************************/
+void KeccakF(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) 
+{
+    for (int round = 0; round < ROUNDS; ++round) {
+        SHA_ComputeTheta(state);
+        SHA_ComputeRho(state);
+        SHA_ComputePi(state);
+        SHA_ComputeChi(state);
+        SHA_ComputeIota(state, round);
+    }
+}
+
+void SHA_ComputeRho(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) {
+    // (Implementation omitted as requested)
+}
+
+/*************************************************************
+ * Function Name: SHA_ComputeIota
+ * Descriotion:
+ *  This function performs the Iota step mapping which adds
+ *  round constants to the state. Round constants are added to
+ *  the first lane (lane [0,0]) to break any symmetry and
+ *  introduce more complexity.  The round constant is obtained
+ *  from a precomputed array based on the round number
+ * Arguments:
+ *  state (uint64_t *): Input-Output argument containing the state
+ *  round (int): the round number used to determine the constant
+ * Return:
+ *  void
+ ************************************************************/
+void SHA_ComputeIota(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE], int round) {
+    state[0][0] ^= RC[round];
+}
+
 /*************************************************************
  * Function Name: SHA_ComputePi
  * Descriotion:
