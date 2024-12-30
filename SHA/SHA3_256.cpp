@@ -124,10 +124,6 @@ void KeccakF(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
     }
 }
 
-void SHA_ComputeTheta(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) {
-    // (Implementation omitted as requested)
-}
-
 void SHA_ComputeRho(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) {
     // (Implementation omitted as requested)
 }
