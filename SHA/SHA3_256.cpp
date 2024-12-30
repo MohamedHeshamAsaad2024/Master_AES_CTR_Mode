@@ -24,7 +24,7 @@
  ********************************************************************/
 #define STATE_ROW_SIZE              5U
 #define STATE_COLUMN_SIZE           5U
-
+#define ROTL64(x, n) (((x) << (n)) | ((x) >> (64 - (n))))
 /********************************************************************
  **************************** GLOBALS *******************************
  ********************************************************************/
@@ -183,6 +183,48 @@ void SHA_ComputePi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
         for (int y = 0; y < STATE_COLUMN_SIZE; ++y) 
         {
             state[x][y] = tempState[(x + 3 * y) % 5][x];
+        }
+    }
+}
+
+/*************************************************************
+ * Function Name: SHA_ComputeTheta
+ * Description:
+ *  This function performs the Theta step mapping which ensures
+ *  diffusion across all bits in the state. Each bit is XORed
+ *  with a parity bit derived from the columns of the state.
+ *  This is achieved through the following formula:
+ *    C[x] = A[x,0] ^ A[x,1] ^ A[x,2] ^ A[x,3] ^ A[x,4]
+ *    D[x] = C[x-1] ^ ROT(C[x+1], 1)
+ *    A'[x,y] = A[x,y] ^ D[x]
+ * Arguments:
+ *  state (uint64_t *): Input-Output argument containing the state
+ * Return:
+ *  void
+ ************************************************************/
+void SHA_ComputeTheta(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) 
+{
+    uint64_t C[STATE_ROW_SIZE];
+    uint64_t D[STATE_ROW_SIZE];
+
+    /* Compute the parity of each column */
+    for (int x = 0; x < STATE_ROW_SIZE; ++x) 
+    {
+        C[x] = state[x][0] ^ state[x][1] ^ state[x][2] ^ state[x][3] ^ state[x][4];
+    }
+
+    /* Compute the D array */
+    for (int x = 0; x < STATE_ROW_SIZE; ++x) 
+    {
+        D[x] = C[(x + STATE_ROW_SIZE - 1) % STATE_ROW_SIZE] ^ ROTL64(C[(x + 1) % STATE_ROW_SIZE], 1);
+    }
+
+    /* Apply the Theta step */
+    for (int x = 0; x < STATE_ROW_SIZE; ++x) 
+    {
+        for (int y = 0; y < STATE_COLUMN_SIZE; ++y) 
+        {
+            state[x][y] ^= D[x];
         }
     }
 }
