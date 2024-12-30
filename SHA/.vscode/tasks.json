@@ -4,7 +4,7 @@
 		{
 			"type": "cppbuild",
 			"label": "C/C++: cpp.exe build active file",
-			"command": "C:\\mingw32\\bin\\g++.exe",
+			"command": "C:\\MinGW\\bin\\g++.exe",
 			"args": [
 				"-fdiagnostics-color=always",
 				"-g",
@@ -20,7 +20,7 @@
 				"$gcc"
 			],
 			"group": "build",
-			"detail": "compiler: C:\\mingw32\\bin\\cpp.exe"
+			"detail": "compiler: C:\\MinGW\\bin\\cpp.exe"
 		},
 		{
 			"type": "shell",
