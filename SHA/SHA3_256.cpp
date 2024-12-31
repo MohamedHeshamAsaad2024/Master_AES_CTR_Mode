@@ -29,10 +29,10 @@
  **************************** GLOBALS *******************************
  ********************************************************************/
 // Constants for SHA3-224
-int RATE = 1152;
-int CAPACITY = 448;
+int RATE = 1088;
+int CAPACITY = 512;
 int BLOCK_SIZE = RATE + CAPACITY; // b = 1600
-int OUTPUT_LENGTH = 224;
+int OUTPUT_LENGTH = 256;
 int ROUNDS = 24;
 int STATE_SIZE = STATE_ROW_SIZE * STATE_COLUMN_SIZE * 64;  // 1600 bits
 // Type aliases for clarity
@@ -59,6 +59,9 @@ void SHA_ComputePi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
 void SHA_ComputeChi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
 void SHA_ComputeIota(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE], int round);
 std::vector<uint8_t> SHA_MultiRatePadding(const std::string& input, int rate);
+void convertToStateArray(const std::vector<uint8_t>& paddedMessage, uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
+void printState(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
+std::vector<uint8_t> convertFromStateArray(const uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
 
 /********************************************************************
  ************************* Main Function ****************************
@@ -67,29 +70,68 @@ int main()
 {
     // 1. Padding
     /* Exampl usage of padding scheme */
-    std::string message = "Hello, SHA-3!";
-    std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(message, RATE);
+    // std::string message = "Hello, SHA-3!";
+    // std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(message, RATE);
+    std::vector<uint8_t> paddedMessage(200, 0); 
+    paddedMessage[0] = 0x53;
+    paddedMessage[1] = 0x58;
+    paddedMessage[2] = 0x7B;
+    paddedMessage[3] = 0x99;
+    paddedMessage[4] = 0x01;
+
+
     // 2.1 Absorbing Phase
     uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
+    uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
+    //convertToStateArray(paddedMessage,paddedMessageArray);
+    // uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] =
+    // {
+    //     {0x00000001997b5853, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
+    //     {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x8000000000000000, 0x0000000000000000},
+    //     {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
+    //     {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
+    //     {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000}
+    // };
 
-     // Process the padded message in blocks of size RATE
-    size_t rateInBytes = RATE / 8;
-    for (size_t i = 0; i < paddedMessage.size(); i += rateInBytes) {
-        // a. Absorbing Phase: XOR input block with state
-        for (size_t j = 0; j < rateInBytes && i + j < paddedMessage.size(); ++j) {
-            state[j / 8][j % 8] ^= paddedMessage[i + j]; 
+    convertToStateArray(paddedMessage, paddedMessageArray);
+
+    // XOR the padded message with the state (absorbing phase)
+    for (int x = 0; x < STATE_ROW_SIZE; ++x) {
+        for (int y = 0; y < STATE_COLUMN_SIZE; ++y) {
+            state[x][y] ^= paddedMessageArray[x][y]; 
         }
-        // b. Keccak-f Permutation
-        KeccakF(state);
     }
-    std::vector<uint8_t> outputHash;
-     for(int i = 0; i < (OUTPUT_LENGTH / 8); ++i)
-    {
-        outputHash.push_back(state[i/8][i%8]);
-    }
-    // 2.2 Squeezing Phase
+    KeccakF(state);
+    
+    // std::vector<uint8_t> outputHash;
+    //  for(int i = 0; i < (OUTPUT_LENGTH / 8); ++i)
+    // {
+    //     outputHash.push_back(state[i/8][i%8]);
+    // }
 
-    return 0;
+    // 2.2 Squeezing Phase
+    std::vector<uint8_t> outputHash;
+    // size_t outputBytes = OUTPUT_LENGTH / 8; // Number of bytes in the final hash
+    // size_t extractedBytes = 0;
+
+    // while (extractedBytes < outputBytes) {
+    //     for (size_t i = 0; i < RATE / 8 && extractedBytes < outputBytes; ++i) {
+    //         outputHash.push_back((uint8_t)(state[i / 8][i % 8] >> ((i % 8) * 8))); // Correctly extract bytes
+    //         extractedBytes++;
+    //     }
+    //     if (extractedBytes < outputBytes) {
+    //         KeccakF(state); // Generate more output if needed
+    //     }
+    // }
+
+    outputHash = convertFromStateArray(state);
+    // Print the hash 
+    std::cout << "Output Hash: ";
+    for (uint8_t byte : outputHash) {
+        printf("%02X", byte); // Use printf for consistent formatting
+    }
+    std::cout << std::endl;
+
 }
 
 
@@ -115,17 +157,86 @@ int main()
  ************************************************************/
 void KeccakF(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) 
 {
-    for (int round = 0; round < ROUNDS; ++round) {
+    for (int round = 0; round < ROUNDS; ++round) 
+    {
+        std::cout << "Round " << round << ":" << std::endl; // Indicate the round number
+        std::cout << "State before Theta:" << std::endl;
+        printState(state);
+
         SHA_ComputeTheta(state);
+
+        std::cout << "State after Theta & Before Rho:" << std::endl;
+        printState(state);
+
         SHA_ComputeRho(state);
+
+        std::cout << "State after Rho & Before Pi:" << std::endl;
+        printState(state);
+
         SHA_ComputePi(state);
+
+        std::cout << "State after Pi & Before Chi:" << std::endl;
+        printState(state);
+
         SHA_ComputeChi(state);
+
+        std::cout << "State after Chi & Before Iota:" << std::endl;
+        printState(state);
+
         SHA_ComputeIota(state, round);
+        
+        std::cout << "State after Iota:" << std::endl;
+        printState(state);
     }
 }
 
+/*************************************************************
+ * Function Name: SHA_ComputeRho
+ * Description:
+ *  This function performs the Rho step mapping which performs
+ *  bitwise left circular rotations on each lane of the state.
+ *  The amount of rotation for each lane is pre-defined and
+ *  differs from lane to lane according to the following
+ *  formula:
+ *    A'[x,y,z] = ROT(A[x,y,z], r[x,y])
+ *  Where r[x,y] are rotation constants derived according to
+ *  specific rules.  Rho step provides inter-lane diffusion.
+ * Arguments:
+ *  state (uint64_t[STATE_ROW_SIZE][STATE_COLUMN_SIZE]):
+ *    Input-Output argument containing the state represented
+ *    as a 2D array of 64-bit unsigned integers.
+ * Return:
+ *  void
+ ************************************************************/
 void SHA_ComputeRho(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) {
-    // (Implementation omitted as requested)
+    // Define rotation constants r[x,y] as per the SHA3 specification
+    // These constants determine the amount of left rotation for each lane.
+    int r[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {
+        { 0, 36,  3, 41, 18},
+        { 1, 44, 10, 45,  2},
+        {62,  6, 43, 15, 61},
+        {28, 55, 25, 21, 56},
+        {27, 20, 39,  8, 14}
+    };
+
+     /* Define a temprary state to hold the original states before computation */
+    uint64_t tempState[STATE_ROW_SIZE][STATE_COLUMN_SIZE];
+
+    /* Copy the current state into the temporary State */
+    for (int x = 0; x < STATE_ROW_SIZE; ++x) 
+    {
+        for (int y = 0; y < STATE_COLUMN_SIZE; ++y) 
+        {
+            tempState[x][y] = state[x][y];
+        }
+    }
+
+    /* Apply the Rho step mapping: Left-rotate each lane by r[x,y] bits */
+    for (int x = 0; x < STATE_ROW_SIZE; ++x) {
+        for (int y = 0; y < STATE_COLUMN_SIZE; ++y) {
+            state[x][y] = ROTL64(tempState[x][y], r[x][y]);
+        }
+    }
 }
 
 /*************************************************************
@@ -327,4 +438,72 @@ std::vector<uint8_t> SHA_MultiRatePadding(const std::string& input, int rate)
     }
 
     return paddedMessage;
+}
+
+
+void convertToStateArray(const std::vector<uint8_t>& paddedMessage, uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) {
+    // Initialize the state array to all zeros
+    for (int x = 0; x < STATE_ROW_SIZE; ++x) {
+        for (int y = 0; y < STATE_COLUMN_SIZE; ++y) {
+            state[x][y] = 0;
+        }
+    }
+
+    // Iterate through the padded message and populate the state array
+    for (size_t i = 0; i < paddedMessage.size(); ++i) {
+        size_t x = (i * 8 / 64) % 5;      // Calculate the x coordinate
+        size_t y = (i * 8 / 64) / 5;      // Calculate the y coordinate
+        size_t z = i * 8 % 64;          // Calculate the z coordinate
+
+
+        for(int bit_in_byte = 0; bit_in_byte < 8; ++bit_in_byte)
+        {   
+            uint64_t bit = (paddedMessage[i] >> bit_in_byte) & 1;
+            state[x][y] ^= (bit << z + bit_in_byte);
+        }
+    }
+}
+
+std::vector<uint8_t> convertFromStateArray(const uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) {
+    std::vector<uint8_t> message;
+    message.reserve(STATE_ROW_SIZE * STATE_COLUMN_SIZE * sizeof(uint64_t)); // Reserve space for efficiency
+
+    for (int y = 0; y < STATE_COLUMN_SIZE; ++y) {
+        for (int x = 0; x < STATE_ROW_SIZE; ++x) {
+            // Get a pointer to the bytes of the current uint64_t
+            const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&state[x][y]);
+
+            // Append each byte to the message vector
+            for (size_t i = 0; i < sizeof(uint64_t); ++i) {
+                message.push_back(bytes[i]);
+            }
+        }
+    }
+
+    return message;
+}
+
+void printState(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
+{
+    int byteCount = 0;
+
+    /* Print the updated state */
+    for (int x = 0; x < STATE_ROW_SIZE; ++x)
+    {
+        for (int y = 0; y < STATE_COLUMN_SIZE; ++y)
+        {
+            uint8_t *bytes = reinterpret_cast<uint8_t*>(&state[y][x]);
+            for (int i = 0; i < sizeof(uint64_t); ++i)
+            {
+                printf("%02X ", bytes[i]);
+                byteCount++;
+
+                if (byteCount % 16 == 0) 
+                {
+                    printf("\n");
+                }
+            }
+        }
+    }
+    printf("\n");
 }

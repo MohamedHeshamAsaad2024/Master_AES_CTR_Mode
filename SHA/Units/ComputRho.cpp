@@ -34,6 +34,56 @@ void SHA_ComputeTheta(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
     }
 }
 
+
+/*************************************************************
+ * Function Name: SHA_ComputeRho
+ * Description:
+ *  This function performs the Rho step mapping which performs
+ *  bitwise left circular rotations on each lane of the state.
+ *  The amount of rotation for each lane is pre-defined and
+ *  differs from lane to lane according to the following
+ *  formula:
+ *    A'[x,y,z] = ROT(A[x,y,z], r[x,y])
+ *  Where r[x,y] are rotation constants derived according to
+ *  specific rules.  Rho step provides inter-lane diffusion.
+ * Arguments:
+ *  state (uint64_t[STATE_ROW_SIZE][STATE_COLUMN_SIZE]):
+ *    Input-Output argument containing the state represented
+ *    as a 2D array of 64-bit unsigned integers.
+ * Return:
+ *  void
+ ************************************************************/
+void SHA_ComputeRho(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]) {
+    // Define rotation constants r[x,y] as per the SHA3 specification
+    // These constants determine the amount of left rotation for each lane.
+    int r[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {
+        { 0, 36,  3, 41, 18},
+        { 1, 44, 10, 45,  2},
+        {62,  6, 43, 15, 61},
+        {28, 55, 25, 21, 56},
+        {27, 20, 39,  8, 14}
+    };
+
+     /* Define a temprary state to hold the original states before computation */
+    uint64_t tempState[STATE_ROW_SIZE][STATE_COLUMN_SIZE];
+
+    /* Copy the current state into the temporary State */
+    for (int x = 0; x < STATE_ROW_SIZE; ++x) 
+    {
+        for (int y = 0; y < STATE_COLUMN_SIZE; ++y) 
+        {
+            tempState[x][y] = state[x][y];
+        }
+    }
+
+    /* Apply the Rho step mapping: Left-rotate each lane by r[x,y] bits */
+    for (int x = 0; x < STATE_ROW_SIZE; ++x) {
+        for (int y = 0; y < STATE_COLUMN_SIZE; ++y) {
+            state[x][y] = ROTL64(tempState[x][y], r[x][y]);
+        }
+    }
+}
+
 void printState(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
 {
     int byteCount = 0;
@@ -76,6 +126,10 @@ int main()
     SHA_ComputeTheta(state);
 
     std::cout << "After Theta Step:" << std::endl;
+    printState(state);
+
+    SHA_ComputeRho(state);
+    std::cout << "After Rho Step:" << std::endl;
     printState(state);
 
     return 0;
