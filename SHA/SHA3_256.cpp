@@ -52,6 +52,7 @@ const uint64_t RC[24] = {
 /********************************************************************
  ************************* Prototypes *******************************
  ********************************************************************/
+std::vector<uint8_t> Sponge(const std::vector<uint8_t>& input, int rate, int capacity, int outputLength);
 void KeccakF(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
 void SHA_ComputeTheta(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
 void SHA_ComputeRho(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE]);
@@ -68,39 +69,24 @@ std::vector<uint8_t> convertFromStateArray(const uint64_t state[STATE_ROW_SIZE][
  ********************************************************************/
 int main() 
 {
-    // 1. Padding
-    /* Exampl usage of padding scheme */
-    std::string message = "Hello, SHA-3!";
-    std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(message, RATE);
-
-
-    // 2.1 Absorbing Phase
-    uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
-    uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
-    convertToStateArray(paddedMessage,paddedMessageArray);
-
-    // XOR the padded message with the state (absorbing phase)
-    for (int x = 0; x < STATE_ROW_SIZE; ++x) {
-        for (int y = 0; y < STATE_COLUMN_SIZE; ++y) {
-            state[x][y] ^= paddedMessageArray[x][y]; 
-        }
+    // 1. Input Message
+    std::vector<uint8_t> InputMsg(200, 0); 
+    for (int i = 0; i < 200; i++)
+    {
+        InputMsg[i] = 0xA3;
     }
-    KeccakF(state);
 
-    // 2.2 Squeezing Phase
-    std::vector<uint8_t> outputHash;
-    /*squezing implementation */
-
-    outputHash = convertFromStateArray(state);
-    outputHash.resize(OUTPUT_LENGTH / 8);
-
+    // 2. Absorbing and Squeezing
+    std::vector<uint8_t> HashDigest = Sponge(InputMsg, RATE, CAPACITY,OUTPUT_LENGTH);
+    
     // Print the hash 
     std::cout << "Output Hash: ";
-    for (uint8_t byte : outputHash) {
-        printf("%02X", byte); // Use printf for consistent formatting
+    for (int byte = 0; byte < 32; byte++)
+    {
+        printf("%02X", HashDigest[byte]); // Use printf for consistent formatting
     }
+    
     std::cout << std::endl;
-
 }
 
 
@@ -128,11 +114,34 @@ void KeccakF(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
 {
     for (int round = 0; round < ROUNDS; ++round) 
     {
+        std::cout << "Round " << round << ":" << std::endl; // Indicate the round number
+        std::cout << "State before Theta:" << std::endl;
+        printState(state);
+
         SHA_ComputeTheta(state);
+
+        std::cout << "State after Theta & Before Rho:" << std::endl;
+        printState(state);
+
         SHA_ComputeRho(state);
+
+        std::cout << "State after Rho & Before Pi:" << std::endl;
+        printState(state);
+
         SHA_ComputePi(state);
+
+        std::cout << "State after Pi & Before Chi:" << std::endl;
+        printState(state);
+
         SHA_ComputeChi(state);
+
+        std::cout << "State after Chi & Before Iota:" << std::endl;
+        printState(state);
+
         SHA_ComputeIota(state, round);
+        
+        std::cout << "State after Iota:" << std::endl;
+        printState(state);
     }
 }
 
@@ -342,10 +351,10 @@ void SHA_ComputeChi(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
  * Return:
  *  vector: The padded message with the hash mode prefix
  ************************************************************/
-std::vector<uint8_t> SHA_MultiRatePadding(const std::string& input, int rate) 
+std::vector<uint8_t> SHA_MultiRatePadding(const std::vector<uint8_t>& input, int rate) 
 {
     /* Convert the input string to a vector of bytes */
-    std::vector<uint8_t> paddedMessage(input.begin(), input.end());
+    std::vector<uint8_t> paddedMessage = input;
 
     /* Determine the rate in bytes */
     size_t rateInBytes = rate / 8;
@@ -485,4 +494,70 @@ void printState(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
         }
     }
     printf("\n");
+}
+
+/*************************************************************
+ * Function Name: Sponge
+ * Description:
+ *  This function implements the Sponge construction, which is
+ *  used in the SHA-3 algorithm to absorb the input message and
+ *  squeeze out the final hash value. The Sponge construction
+ *  consists of two phases: absorbing and squeezing.
+ * Arguments:
+ *  input (const std::vector<uint8_t>&): The input message to be hashed.
+ *  rate (int): The rate parameter (in bits) of the Sponge construction.
+ *  capacity (int): The capacity parameter (in bits) of the Sponge construction.
+ *  outputLength (int): The desired length (in bits) of the output hash.
+ * Return:
+ *  std::vector<uint8_t>: The resulting hash value.
+ ************************************************************/
+std::vector<uint8_t> Sponge(const std::vector<uint8_t>& input, int rate, int capacity, int outputLength) 
+{
+    // Initialize the state array to zero
+    uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
+
+    // Convert the input message to a padded message
+    std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(input, rate);
+
+    // Absorbing phase
+    size_t rateInBytes = rate / 8;
+    for (size_t i = 0; i < paddedMessage.size(); i += rateInBytes) 
+    {
+        for (size_t j = 0; j < rateInBytes / 8; ++j) 
+        {
+            state[j % STATE_ROW_SIZE][j / STATE_ROW_SIZE] ^= 
+                ((uint64_t)paddedMessage[i + j * 8 + 0] << 0) |
+                ((uint64_t)paddedMessage[i + j * 8 + 1] << 8) |
+                ((uint64_t)paddedMessage[i + j * 8 + 2] << 16) |
+                ((uint64_t)paddedMessage[i + j * 8 + 3] << 24) |
+                ((uint64_t)paddedMessage[i + j * 8 + 4] << 32) |
+                ((uint64_t)paddedMessage[i + j * 8 + 5] << 40) |
+                ((uint64_t)paddedMessage[i + j * 8 + 6] << 48) |
+                ((uint64_t)paddedMessage[i + j * 8 + 7] << 56);
+        }
+        KeccakF(state);
+    }
+
+    // Squeezing phase
+    std::vector<uint8_t> outputHash;
+    std::vector<uint8_t> HashDigest;
+    size_t outputBytes = outputLength / 8;
+    size_t extractedBytes = 0;
+
+    while (extractedBytes < outputBytes) 
+    {
+        for (size_t i = 0; i < rateInBytes && extractedBytes < outputBytes; ++i) 
+        {
+            outputHash.push_back((uint8_t)(state[i / 8][i % 8] >> ((i % 8) * 8)));
+            extractedBytes++;
+        }
+        if (extractedBytes < outputBytes) 
+        {
+            KeccakF(state);
+        }
+    }
+
+    HashDigest = convertFromStateArray(state);
+
+    return HashDigest;
 }
