@@ -70,14 +70,22 @@ int main()
 {
     // 1. Padding
     /* Exampl usage of padding scheme */
-    std::string message = "Hello, SHA-3!";
-    std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(message, RATE);
+    // std::string message = "Hello, SHA-3!";
+    // std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(message, RATE);
 
 
     // 2.1 Absorbing Phase
     uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
-    uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
-    convertToStateArray(paddedMessage,paddedMessageArray);
+    // uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
+    // convertToStateArray(paddedMessage,paddedMessageArray);
+    uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] =
+    {
+        {0x00000001997b5853, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
+        {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x8000000000000000, 0x0000000000000000},
+        {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
+        {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
+        {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000}
+    };
 
     // XOR the padded message with the state (absorbing phase)
     for (int x = 0; x < STATE_ROW_SIZE; ++x) {
@@ -128,11 +136,34 @@ void KeccakF(uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE])
 {
     for (int round = 0; round < ROUNDS; ++round) 
     {
+        std::cout << "Round " << round << ":" << std::endl; // Indicate the round number
+        std::cout << "State before Theta:" << std::endl;
+        printState(state);
+
         SHA_ComputeTheta(state);
+
+        std::cout << "State after Theta & Before Rho:" << std::endl;
+        printState(state);
+
         SHA_ComputeRho(state);
+
+        std::cout << "State after Rho & Before Pi:" << std::endl;
+        printState(state);
+
         SHA_ComputePi(state);
+
+        std::cout << "State after Pi & Before Chi:" << std::endl;
+        printState(state);
+
         SHA_ComputeChi(state);
+
+        std::cout << "State after Chi & Before Iota:" << std::endl;
+        printState(state);
+
         SHA_ComputeIota(state, round);
+        
+        std::cout << "State after Iota:" << std::endl;
+        printState(state);
     }
 }
 
