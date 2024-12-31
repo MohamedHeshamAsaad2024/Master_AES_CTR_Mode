@@ -72,28 +72,20 @@ int main()
     /* Exampl usage of padding scheme */
     // std::string message = "Hello, SHA-3!";
     // std::vector<uint8_t> paddedMessage = SHA_MultiRatePadding(message, RATE);
-    std::vector<uint8_t> paddedMessage(200, 0); 
-    paddedMessage[0] = 0x53;
-    paddedMessage[1] = 0x58;
-    paddedMessage[2] = 0x7B;
-    paddedMessage[3] = 0x99;
-    paddedMessage[4] = 0x01;
 
 
     // 2.1 Absorbing Phase
     uint64_t state[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
-    uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
-    //convertToStateArray(paddedMessage,paddedMessageArray);
-    // uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] =
-    // {
-    //     {0x00000001997b5853, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
-    //     {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x8000000000000000, 0x0000000000000000},
-    //     {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
-    //     {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
-    //     {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000}
-    // };
-
-    convertToStateArray(paddedMessage, paddedMessageArray);
+    // uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] = {0};
+    // convertToStateArray(paddedMessage,paddedMessageArray);
+    uint64_t paddedMessageArray[STATE_ROW_SIZE][STATE_COLUMN_SIZE] =
+    {
+        {0x00000001997b5853, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
+        {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x8000000000000000, 0x0000000000000000},
+        {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
+        {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000},
+        {0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000}
+    };
 
     // XOR the padded message with the state (absorbing phase)
     for (int x = 0; x < STATE_ROW_SIZE; ++x) {
@@ -102,29 +94,14 @@ int main()
         }
     }
     KeccakF(state);
-    
-    // std::vector<uint8_t> outputHash;
-    //  for(int i = 0; i < (OUTPUT_LENGTH / 8); ++i)
-    // {
-    //     outputHash.push_back(state[i/8][i%8]);
-    // }
 
     // 2.2 Squeezing Phase
     std::vector<uint8_t> outputHash;
-    // size_t outputBytes = OUTPUT_LENGTH / 8; // Number of bytes in the final hash
-    // size_t extractedBytes = 0;
-
-    // while (extractedBytes < outputBytes) {
-    //     for (size_t i = 0; i < RATE / 8 && extractedBytes < outputBytes; ++i) {
-    //         outputHash.push_back((uint8_t)(state[i / 8][i % 8] >> ((i % 8) * 8))); // Correctly extract bytes
-    //         extractedBytes++;
-    //     }
-    //     if (extractedBytes < outputBytes) {
-    //         KeccakF(state); // Generate more output if needed
-    //     }
-    // }
+    /*squezing implementation */
 
     outputHash = convertFromStateArray(state);
+    outputHash.resize(OUTPUT_LENGTH / 8);
+
     // Print the hash 
     std::cout << "Output Hash: ";
     for (uint8_t byte : outputHash) {
